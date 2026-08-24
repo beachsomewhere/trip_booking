@@ -35,8 +35,15 @@ export interface Tally {
   yes: number;
   maybe: number;
   no: number;
-  /** Families that voted yes, in roster order — drives "the Barnes are in". */
+  /**
+   * Who voted each way, in roster order.
+   *
+   * Counts alone were not enough: "1 can't" told you a problem existed without
+   * telling you whose, which is the one thing you need in order to act on it.
+   */
   yesFamilyIds: string[];
+  maybeFamilyIds: string[];
+  noFamilyIds: string[];
   /**
    * Ranking score. A `yes` is worth two `maybe`s: a trip where everyone is
    * lukewarm should lose to one where half the group is enthusiastic and the
@@ -67,6 +74,8 @@ export function tally(
     maybe: 0,
     no: 0,
     yesFamilyIds: [],
+    maybeFamilyIds: [],
+    noFamilyIds: [],
     score: 0,
   });
 
@@ -82,6 +91,8 @@ export function tally(
 
     t[v.choice] += 1;
     if (v.choice === 'yes') t.yesFamilyIds.push(v.family_id);
+    else if (v.choice === 'maybe') t.maybeFamilyIds.push(v.family_id);
+    else t.noFamilyIds.push(v.family_id);
   }
 
   for (const t of result.values()) t.score = t.yes * 2 + t.maybe;

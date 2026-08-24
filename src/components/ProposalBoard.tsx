@@ -18,6 +18,8 @@ export interface BoardItem {
   maybe: number;
   no: number;
   yesFamilyNames: string[];
+  maybeFamilyNames: string[];
+  noFamilyNames: string[];
   myVote: VoteChoice | null;
   isLeader: boolean;
 }
@@ -102,14 +104,18 @@ function ProposalCard({
 
       {item.note ? <p className="text-sm text-muted">“{item.note}”</p> : null}
 
+      {/* Name who voted which way. A bare count told you a problem existed
+          without telling you whose it was — and "No votes yet" used to sit next
+          to "1 can't", because only the yes column counted as a vote. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
         {item.yes > 0 ? (
           <span className="text-moss-600">{listFamilies(item.yesFamilyNames)} in</span>
-        ) : (
-          <span>No votes yet</span>
-        )}
-        {item.maybe > 0 ? <span>{item.maybe} maybe</span> : null}
-        {item.no > 0 ? <span className="text-clay-600">{item.no} can&apos;t</span> : null}
+        ) : null}
+        {item.maybe > 0 ? <span>{listFamilies(item.maybeFamilyNames)} maybe</span> : null}
+        {item.no > 0 ? (
+          <span className="text-clay-600">{listFamilies(item.noFamilyNames)} can&apos;t</span>
+        ) : null}
+        {item.yes === 0 && item.maybe === 0 && item.no === 0 ? <span>No votes yet</span> : null}
       </div>
 
       {canVote ? (

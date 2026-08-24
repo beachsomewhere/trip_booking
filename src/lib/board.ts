@@ -38,6 +38,8 @@ export function boardBase<P extends MinimalProposal & { note?: string | null }>(
           maybe: t.maybe,
           no: t.no,
           yesFamilyNames: t.yesFamilyIds.map(nameOf),
+          maybeFamilyNames: t.maybeFamilyIds.map(nameOf),
+          noFamilyNames: t.noFamilyIds.map(nameOf),
           myVote,
           isLeader: front?.proposalId === proposal.id,
         } satisfies Omit<BoardItem, 'body'>,
