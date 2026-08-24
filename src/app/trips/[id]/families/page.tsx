@@ -1,5 +1,6 @@
 import { AttendeePicker } from '@/components/families/AttendeePicker';
-import { loadHouseholdPeople, loadKnownFamilies } from '@/actions/families';
+import { AttendeeEditor } from '@/components/families/AttendeeEditor';
+import { loadHouseholdPeople, loadKnownFamilies, saveFamilyAndAttend } from '@/actions/families';
 import { FamilyProposalCard, type ProposalView } from '@/components/families/FamilyProposalCard';
 import { InviteFamilyForm } from '@/components/families/InviteFamilyForm';
 import {
@@ -145,12 +146,24 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
                     <p className="mb-2 text-sm font-medium text-text">
                       Who&apos;s coming from your family
                     </p>
-                    <AttendeePicker
-                      tripId={id}
-                      familyId={family.id}
-                      tripStart={ctx.trip.agreed_start_date}
-                      people={householdPeople}
-                    />
+                    {/* No household yet — this is their first trip, so take the
+                        details here and remember them, rather than sending them
+                        off to a settings page and back. */}
+                    {householdPeople.length === 0 ? (
+                      <AttendeeEditor
+                        save={saveFamilyAndAttend.bind(null, id, family.id)}
+                        tripStart={ctx.trip.agreed_start_date}
+                        initial={[]}
+                        saveLabel="Save my family"
+                      />
+                    ) : (
+                      <AttendeePicker
+                        tripId={id}
+                        familyId={family.id}
+                        tripStart={ctx.trip.agreed_start_date}
+                        people={householdPeople}
+                      />
+                    )}
                   </div>
                 </div>
               ) : null}

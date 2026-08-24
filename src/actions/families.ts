@@ -208,6 +208,103 @@ export async function resendInvites(tripId: string) {
 }
 
 /**
+ * First-time setup, done from inside a trip.
+ *
+ * A family invited to their first trip has no household yet, so the picker has
+ * nothing to pick. Rather than sending them elsewhere to fill in a form and
+ * come back, this takes names and birth months right there, saves them to the
+ * household so every later trip already knows them, and marks the ticked ones
+ * as coming — one step instead of a detour.
+ */
+export async function saveFamilyAndAttend(
+  tripId: string,
+  familyId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const names = formData.getAll('attendeeName').map((v) => String(v).trim());
+  const months = formData.getAll('birthMonth').map((v) => String(v).trim());
+  const years = formData.getAll('birthYear').map((v) => String(v).trim());
+  const emailLists = formData.getAll('personEmails').map((v) => String(v));
+  const coming = formData.getAll('coming').map((v) => String(v) === '1');
+
+  const num = (v: string) => (v === '' ? null : Number(v));
+  const splitEmails = (v: string) => [
+    ...new Set(
+      v
+        .split(/[\s,;]+/)
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+
+  const people = names
+    .map((name, i) => ({
+      name,
+      birth_month: num(months[i] ?? ''),
+      birth_year: num(years[i] ?? ''),
+      emails: splitEmails(emailLists[i] ?? ''),
+      coming: coming[i] ?? true,
+    }))
+    .filter((p) => p.name.length > 0);
+
+  if (people.length === 0) return { error: 'Add at least one person.' };
+
+  const supabase = await createClient();
+
+  const { data: householdId, error: hhError } = await supabase.rpc('ensure_household');
+  if (hhError) return { error: hhError.message };
+
+  const created: { id: string; person: (typeof people)[number] }[] = [];
+
+  for (const person of people) {
+    const { data, error } = await supabase
+      .from('household_people')
+      .insert({
+        household_id: householdId,
+        name: person.name,
+        birth_month: person.birth_month,
+        birth_year: person.birth_year,
+      })
+      .select('id')
+      .single();
+    if (error) return { error: error.message };
+    if (!data?.id) continue;
+
+    created.push({ id: data.id, person });
+
+    if (person.emails.length > 0) {
+      await supabase
+        .from('household_person_emails')
+        .insert(person.emails.map((email) => ({ person_id: data.id, email })));
+    }
+  }
+
+  await supabase.from('families').update({ household_id: householdId }).eq('id', familyId);
+
+  await supabase.from('family_attendees').delete().eq('family_id', familyId);
+
+  const attending = created.filter((c) => c.person.coming);
+  if (attending.length > 0) {
+    const { error } = await supabase.from('family_attendees').insert(
+      attending.map((c) => ({
+        family_id: familyId,
+        person_id: c.id,
+        name: c.person.name,
+        birth_month: c.person.birth_month,
+        birth_year: c.person.birth_year,
+      })),
+    );
+    if (error) return { error: error.message };
+  }
+
+  await supabase.rpc('sync_household_emails', { p_family_id: familyId });
+
+  revalidatePath(`/trips/${tripId}`, 'layout');
+  return { ok: "Saved. Your next trip will already know everyone." };
+}
+
+/**
  * Records which household people are coming on this trip.
  *
  * Deliberately narrow: it selects from the household rather than editing it.

@@ -56,8 +56,22 @@ export function AttendeePicker({
   const toggle = (id: string) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
+  const everyone = selected.length === people.length;
+
   return (
     <form action={action} className="space-y-3">
+      {/* Whole family is the common case; ticking four boxes to say "all of us"
+          is the friction this screen exists to remove. */}
+      {people.length > 1 ? (
+        <button
+          type="button"
+          onClick={() => setSelected(everyone ? [] : people.map((p) => p.personId))}
+          className="text-sm font-medium text-accent underline underline-offset-4"
+        >
+          {everyone ? 'Clear all' : `Everyone (${people.length})`}
+        </button>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         {people.map((p) => {
           const on = selected.includes(p.personId);
