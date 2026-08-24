@@ -115,6 +115,15 @@ This is the one place where the product is shaped by what APIs actually exist.
   first, then OpenGraph/Twitter meta, then the visible prose for "sleeps 8" and "3 bedrooms". It is the
   one part of the app with tests (`npm test`), because it cannot be checked against live sites: whether
   a given site answers a server fetch varies by the day.
+- **Nightly rates cannot be read off a link at all**, and that is not a parser gap. Airbnb's page contains
+  no price anywhere in the HTML a server fetch receives — the number you see in a browser arrives from a
+  separate `StaysPdpBookItQuery` request keyed to your dates and guest counts, after the page loads. Their
+  price is also meaningless without those inputs: the same villa is a different number for two nights in
+  November with nine people than for a week in June with four. So instead of guessing, `lib/listingLink.ts`
+  sends the question back to the site that can answer it — "Open with our dates" carries the trip's dates,
+  adults, children and infants into the listing URL in each site's own parameter spelling. A site whose
+  spelling we do not know is left exactly as pasted; a wrong parameter name is silently ignored and lands
+  the family on a default-priced page without them noticing.
 - If reliable capacity and pricing turn out to matter more than the paste flow, the honest next step is a
   paid third-party STR data API — unofficial, per-call, and liable to break.
 

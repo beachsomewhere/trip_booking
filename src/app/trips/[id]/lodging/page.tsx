@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server';
 import { loadPhaseLocks, loadTripContext, rows } from '@/lib/queries';
 import { HOUSING_LABEL, pluralize } from '@/lib/format';
 import { isPhaseComplete } from '@/lib/phases';
+import type { StayContext } from '@/lib/listingLink';
 
 export default async function LodgingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -73,6 +74,22 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
     .filter((r) => r.pref !== 'prefer_separate')
     .reduce((n, r) => n + r.headcount, 0);
   const capacityNeeded = lookingAlone && myHeadcount > 0 ? myHeadcount : sharedHeadcount;
+
+  // What to ask a booking site for. A family shopping for its own place wants
+  // its own numbers; everyone else wants the numbers of the group actually
+  // sharing. Infants are split out because sites price them separately and
+  // usually leave them out of the occupancy limit entirely.
+  const party = lookingAlone
+    ? arrangement.filter((r) => r.isMine)
+    : arrangement.filter((r) => r.pref !== 'prefer_separate');
+  const partyAges = party.flatMap((r) => r.childAges);
+  const stay: StayContext = {
+    start: ctx.trip.agreed_start_date,
+    end: ctx.trip.agreed_end_date,
+    adults: party.reduce((n, r) => n + r.adults, 0),
+    children: partyAges.filter((a) => a >= 2).length,
+    infants: partyAges.filter((a) => a < 2).length,
+  };
   const prefsSettled = (ctx.trip.housing_types ?? []).length > 0;
   const familiesWithPrefs = allPrefs.length;
 
@@ -213,6 +230,7 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
                   pickCount={myPicks.length}
                   headcount={capacityNeeded}
                   headcountIsMineOnly={lookingAlone}
+                  stay={stay}
                 />
               </>
             )}

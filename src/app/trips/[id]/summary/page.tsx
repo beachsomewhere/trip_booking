@@ -11,6 +11,7 @@ import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
 import { loadTripContext, rows } from '@/lib/queries';
 import { formatDateRange, nightsBetween, pluralize } from '@/lib/format';
+import { withStayContext, pricesByStay } from '@/lib/listingLink';
 
 export default async function SummaryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,6 +29,23 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
   const allPicks = rows('lodging_picks', picksRes);
   const allSelections = rows('lodging_selections', selectionsRes);
   const allPrefs = rows('lodging_prefs', prefsRes);
+
+  // Booking links carry the trip's dates and headcount: nightly rates are
+  // computed by the site after its page loads, so the only way to show a family
+  // the right price is to send them to the listing already asking for it.
+  const summaryAges = ctx.votingFamilies.flatMap(
+    (f) => splitByAge(f.family_attendees, ctx.trip.agreed_start_date).childAges,
+  );
+  const stay = {
+    start: ctx.trip.agreed_start_date,
+    end: ctx.trip.agreed_end_date,
+    adults: ctx.votingFamilies.reduce(
+      (n, f) => n + splitByAge(f.family_attendees, ctx.trip.agreed_start_date).adults,
+      0,
+    ),
+    children: summaryAges.filter((a) => a >= 2).length,
+    infants: summaryAges.filter((a) => a < 2).length,
+  };
 
   // Who still needs a bed in the shared booking, and who is handling their own.
   // The organizer is assigning families to places directly below this.
@@ -165,12 +183,14 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
                 </div>
                 {c?.url ? (
                   <a
-                    href={c.url}
+                    href={withStayContext(c.url, stay)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-medium text-accent"
                   >
-                    Open listing ↗
+                    {pricesByStay(c.url) && stay.start
+                      ? 'Open with our dates ↗'
+                      : 'Open listing ↗'}
                   </a>
                 ) : null}
               </Card>

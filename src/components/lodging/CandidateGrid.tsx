@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { copyPicksFrom, removeCandidate, saveLodgingComment, togglePick } from '@/actions/lodging';
 import { Badge, Button, Card, Input, cx } from '@/components/ui';
 import { listFamilies } from '@/lib/format';
+import { withStayContext, pricesByStay, type StayContext } from '@/lib/listingLink';
 
 export interface CandidateView {
   id: string;
@@ -33,6 +34,7 @@ export function CandidateGrid({
   pickCount,
   headcount,
   headcountIsMineOnly = false,
+  stay,
 }: {
   tripId: string;
   candidates: CandidateView[];
@@ -41,6 +43,8 @@ export function CandidateGrid({
   headcount: number;
   /** True when this family said they want their own place. */
   headcountIsMineOnly?: boolean;
+  /** The trip's dates and headcount, for pricing links on the listing site. */
+  stay: StayContext;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -53,6 +57,7 @@ export function CandidateGrid({
           pickCount={pickCount}
           headcount={headcount}
           headcountIsMineOnly={headcountIsMineOnly}
+          stay={stay}
         />
       ))}
     </div>
@@ -66,6 +71,7 @@ function CandidateCard({
   pickCount,
   headcount,
   headcountIsMineOnly,
+  stay,
 }: {
   tripId: string;
   candidate: CandidateView;
@@ -73,6 +79,7 @@ function CandidateCard({
   pickCount: number;
   headcount: number;
   headcountIsMineOnly: boolean;
+  stay: StayContext;
 }) {
   const [pending, start] = useTransition();
   const [note, setNote] = useState(c.myComment);
@@ -175,12 +182,21 @@ function CandidateCard({
         ) : null}
         {c.url ? (
           <a
-            href={c.url}
+            href={withStayContext(c.url, stay)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-medium text-accent"
+            // Nightly rates are computed by the site after its page loads, so
+            // they can never be read off a pasted link. Sending our dates and
+            // headcount along means the price waiting on the other side is the
+            // price for this trip.
+            title={
+              pricesByStay(c.url) && stay.start
+                ? 'Opens priced for our dates and headcount'
+                : undefined
+            }
           >
-            Open listing ↗
+            {pricesByStay(c.url) && stay.start ? 'Open with our dates ↗' : 'Open listing ↗'}
           </a>
         ) : null}
         {c.canRemove ? (
