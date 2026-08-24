@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AssignUnits, UnbookButton, type AssignableCandidate } from '@/components/lodging/AssignUnits';
 import {
   SleepingArrangement,
+  splitByAge,
   type ArrangementRow,
   type TogetherPref,
 } from '@/components/lodging/SleepingArrangement';
@@ -35,6 +36,7 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
     name: f.name,
     isMine: f.id === ctx.myFamily?.id,
     headcount: f.family_attendees.length,
+    ...splitByAge(f.family_attendees, ctx.trip.agreed_start_date),
     pref:
       (allPrefs.find((p) => p.family_id === f.id)?.stay_together_pref as TogetherPref | undefined) ??
       null,

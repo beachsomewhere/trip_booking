@@ -38,37 +38,53 @@ export function TripLiveRefresh({ tripId }: { tripId: string }) {
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase.channel(`trip:${tripId}`);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
     // One burst of writes — a vote plus its note, or a save that replaces every
     // attendee row — should cost one re-render, not one per row.
-    let timer: ReturnType<typeof setTimeout> | null = null;
     const refresh = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => router.refresh(), 400);
     };
 
-    for (const table of WATCHED) {
+    void (async () => {
+      // Realtime applies RLS using whatever token the socket is holding, and
+      // the session is read from cookies asynchronously. Subscribing before it
+      // arrives joins as `anon`, which can read nothing on this schema — so the
+      // channel reports SUBSCRIBED and then never delivers a single event. That
+      // failure is completely silent, which is what made it expensive to find.
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) await supabase.realtime.setAuth(data.session.access_token);
+      if (cancelled) return;
+
+      channel = supabase.channel(`trip:${tripId}`);
+
+      for (const table of WATCHED) {
+        channel.on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table, filter: `trip_id=eq.${tripId}` },
+          refresh,
+        );
+      }
+
+      // The trip row itself carries the phase, so this is what moves everyone on
+      // when someone closes a step.
       channel.on(
         'postgres_changes',
-        { event: '*', schema: 'public', table, filter: `trip_id=eq.${tripId}` },
+        { event: '*', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` },
         refresh,
       );
-    }
 
-    // The trip row itself carries the phase, so this is what moves everyone on
-    // when someone closes a step.
-    channel.on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` },
-      refresh,
-    );
-
-    channel.subscribe();
+      channel.subscribe();
+    })();
 
     return () => {
+      cancelled = true;
       if (timer) clearTimeout(timer);
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [tripId, router]);
 

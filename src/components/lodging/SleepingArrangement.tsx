@@ -1,5 +1,27 @@
 import { Card } from '@/components/ui';
 import { pluralize } from '@/lib/format';
+import { ageOn, CHILD_AGE, type BirthInfo } from '@/lib/age';
+
+/**
+ * Splits a family's attendees into adults and children's ages on a given date.
+ *
+ * Anyone whose birth data is missing counts as an adult: a listing that sleeps
+ * four adults sleeps four people, so guessing that way is the safe direction to
+ * be wrong in.
+ */
+export function splitByAge(
+  attendees: BirthInfo[],
+  onDate: string | null,
+): { adults: number; childAges: number[] } {
+  const childAges: number[] = [];
+  let adults = 0;
+  for (const a of attendees) {
+    const { age } = ageOn(a, onDate);
+    if (age != null && age < CHILD_AGE) childAges.push(age);
+    else adults += 1;
+  }
+  return { adults, childAges: childAges.sort((x, y) => y - x) };
+}
 
 export type TogetherPref = 'together' | 'separate_ok' | 'prefer_separate' | 'no_preference';
 
@@ -8,8 +30,25 @@ export interface ArrangementRow {
   name: string;
   isMine: boolean;
   headcount: number;
+  adults: number;
+  /**
+   * Ages of everyone under 18, on the trip's own start date, oldest first.
+   * Listings price by adults, cap children, and charge for cots — so the ages
+   * matter, not just the count. Anyone whose birth data is missing is counted
+   * as an adult and does not appear here.
+   */
+  childAges: number[];
   /** Null until that family has answered. */
   pref: TogetherPref | null;
+}
+
+/** "2 adults, 2 children (9, 6)" — the shape a booking form asks for. */
+function describe(rows: ArrangementRow[]): string {
+  const adults = rows.reduce((n, r) => n + r.adults, 0);
+  const ages = rows.flatMap((r) => r.childAges).sort((a, b) => b - a);
+  if (adults === 0 && ages.length === 0) return 'nobody listed yet';
+  if (ages.length === 0) return pluralize(adults, 'adult');
+  return `${pluralize(adults, 'adult')}, ${pluralize(ages.length, 'child', 'children')} (${ages.join(', ')})`;
 }
 
 /** How each answer reads beside a family's name. */
@@ -46,19 +85,20 @@ export function SleepingArrangement({ rows }: { rows: ArrangementRow[] }) {
     <Card className="space-y-4">
       <p className="text-sm text-text">
         {sharing.length > 0 ? (
-          <strong>One place for {sharedHeadcount}</strong>
-        ) : (
-          <strong>Everyone is sorting their own place</strong>
-        )}
-        {separate.length > 0 ? (
           <>
-            {sharing.length > 0 ? ', and ' : ' — '}
-            {pluralize(separate.length, 'family', 'families')} looking separately (
-            {separateHeadcount}).
+            <strong>One place for {sharedHeadcount}</strong>
+            <span className="text-muted"> — {describe(sharing)}.</span>
           </>
         ) : (
-          '.'
+          <strong>Everyone is sorting their own place.</strong>
         )}
+        {separate.length > 0 ? (
+          <span className="text-muted">
+            {' '}
+            {pluralize(separate.length, 'family', 'families')} looking separately (
+            {separateHeadcount}).
+          </span>
+        ) : null}
         {unanswered.length > 0 ? (
           <span className="text-muted">
             {' '}
@@ -73,6 +113,9 @@ export function SleepingArrangement({ rows }: { rows: ArrangementRow[] }) {
       {separate.length > 0 ? (
         <Group title={`Their own place — ${separateHeadcount}`} rows={separate} />
       ) : null}
+      <p className="border-t border-edge pt-3 text-xs text-muted">
+        Ages are as of the first day of the trip.
+      </p>
     </Card>
   );
 }
@@ -86,11 +129,14 @@ function Group({ title, rows, empty }: { title: string; rows: ArrangementRow[]; 
       ) : (
         <ul className="space-y-1">
           {rows.map((r) => (
-            <li key={r.familyId} className="flex items-baseline justify-between gap-3 text-sm">
+            <li
+              key={r.familyId}
+              className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm"
+            >
               <span className="text-text">
                 {r.name}
                 {r.isMine ? <span className="text-muted"> (you)</span> : null}
-                <span className="text-muted"> · {pluralize(r.headcount, 'person', 'people')}</span>
+                <span className="text-muted"> · {describe([r])}</span>
               </span>
               <span className={r.pref ? 'shrink-0 text-muted' : 'shrink-0 text-clay-600'}>
                 {r.pref ? QUALIFIER[r.pref] : "hasn't said"}

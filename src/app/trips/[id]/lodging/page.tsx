@@ -4,6 +4,7 @@ import { LodgingPrefsForm } from '@/components/lodging/LodgingPrefsForm';
 import { ResolvePrefsButton } from '@/components/lodging/ResolvePrefsButton';
 import {
   SleepingArrangement,
+  splitByAge,
   type ArrangementRow,
   type TogetherPref,
 } from '@/components/lodging/SleepingArrangement';
@@ -55,6 +56,7 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
     name: f.name,
     isMine: f.id === ctx.myFamily?.id,
     headcount: f.family_attendees.length,
+    ...splitByAge(f.family_attendees, ctx.trip.agreed_start_date),
     pref:
       (allPrefs.find((p) => p.family_id === f.id)?.stay_together_pref as TogetherPref | undefined) ??
       null,
