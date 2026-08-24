@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { PendingFriendRequests } from '@/components/friends/PendingFriendRequests';
 import { loadPendingFriendRequests } from '@/actions/friends';
+import { ClaimHousehold } from '@/components/families/ClaimHousehold';
+import { loadClaimableHouseholds } from '@/actions/household';
 import { Badge, Button, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient, getUser } from '@/lib/supabase/server';
 import { PHASE_META, phaseHref, type TripPhase } from '@/lib/phases';
@@ -22,6 +24,7 @@ export default async function TripsPage() {
       .order('created_at', { ascending: false }),
     loadPendingFriendRequests(),
   ]);
+  const claimable = await loadClaimableHouseholds();
   if (error) console.error('[trips] query failed', error);
 
   return (
@@ -36,6 +39,7 @@ export default async function TripsPage() {
         </div>
 
         <div className="mt-6 space-y-3">
+          <ClaimHousehold options={claimable} />
           <PendingFriendRequests requests={pendingRequests} />
 
           {!trips || trips.length === 0 ? (

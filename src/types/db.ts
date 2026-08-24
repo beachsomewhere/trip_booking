@@ -492,6 +492,32 @@ export type Database = {
           },
         ]
       }
+      household_claim_declines: {
+        Row: {
+          created_at: string
+          household_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_claim_declines_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_links: {
         Row: {
           created_at: string
@@ -1130,6 +1156,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      absorb_empty_household: { Args: { p_keep: string }; Returns: undefined }
       accept_friend: { Args: { p_token: string }; Returns: string }
       accept_invitation: { Args: { p_token: string }; Returns: string }
       advance_phase: {
@@ -1138,6 +1165,15 @@ export type Database = {
           p_trip_id: string
         }
         Returns: Database["public"]["Enums"]["trip_phase"]
+      }
+      claim_household: { Args: { p_household_id: string }; Returns: undefined }
+      claimable_households: {
+        Args: never
+        Returns: {
+          household_id: string
+          household_name: string
+          person_name: string
+        }[]
       }
       clear_lodging_selection: {
         Args: { p_selection_id: string; p_trip_id: string }
@@ -1162,6 +1198,10 @@ export type Database = {
             Returns: string
           }
       decline_friend: { Args: { p_token: string }; Returns: undefined }
+      decline_household_claim: {
+        Args: { p_household_id: string }
+        Returns: undefined
+      }
       decline_invitation: { Args: { p_token: string }; Returns: string }
       delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
       ensure_household: { Args: { p_name?: string }; Returns: string }
@@ -1215,6 +1255,7 @@ export type Database = {
           since: string
         }[]
       }
+      my_household_id: { Args: never; Returns: string }
       pending_friend_requests: {
         Args: never
         Returns: {

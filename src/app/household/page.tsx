@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { AttendeeEditor } from '@/components/families/AttendeeEditor';
-import { loadMyHousehold, saveHouseholdPeople } from '@/actions/household';
+import { ClaimHousehold } from '@/components/families/ClaimHousehold';
+import {
+  loadClaimableHouseholds,
+  loadMyHousehold,
+  saveHouseholdPeople,
+} from '@/actions/household';
 import { FriendsCard } from '@/components/friends/FriendsCard';
 import { PendingFriendRequests } from '@/components/friends/PendingFriendRequests';
 import {
@@ -24,12 +29,14 @@ export default async function HouseholdPage() {
   const user = await getUser();
   if (!user) redirect('/login?next=/household');
 
-  const [{ people, householdName = '' }, friends, sent, pendingRequests] = await Promise.all([
-    loadMyHousehold(),
-    loadFriends(),
-    loadSentFriendRequests(),
-    loadPendingFriendRequests(),
-  ]);
+  const [{ people, householdName = '' }, friends, sent, pendingRequests, claimable] =
+    await Promise.all([
+      loadMyHousehold(),
+      loadFriends(),
+      loadSentFriendRequests(),
+      loadPendingFriendRequests(),
+      loadClaimableHouseholds(),
+    ]);
 
   return (
     <>
@@ -45,6 +52,7 @@ export default async function HouseholdPage() {
             subtitle="Entered once and reused. Every new trip starts from this — you just tick who's going that time, and anyone with an email can follow along."
           />
 
+          <ClaimHousehold options={claimable} />
           <PendingFriendRequests requests={pendingRequests} />
 
           <Card>

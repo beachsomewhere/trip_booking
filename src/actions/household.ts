@@ -162,3 +162,49 @@ export async function renameHousehold(
   revalidatePath('/trips');
   return { ok: `Saved. You'll show up as ${name} on your trips.` };
 }
+
+/**
+ * Households that list your address against one of their people.
+ *
+ * Offered, never taken. Anyone can type any address into their own household,
+ * so joining on an email match alone would let a stranger decide which family
+ * you land in — and then read whatever you entered into it. The match only ever
+ * produces a question.
+ */
+export interface ClaimableHousehold {
+  householdId: string;
+  householdName: string;
+  personName: string;
+}
+
+export async function loadClaimableHouseholds(): Promise<ClaimableHousehold[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('claimable_households');
+  if (error) {
+    console.error('[claimable_households]', error.message);
+    return [];
+  }
+  return (data ?? []).map((h) => ({
+    householdId: h.household_id,
+    householdName: h.household_name,
+    personName: h.person_name,
+  }));
+}
+
+export async function claimHousehold(householdId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('claim_household', { p_household_id: householdId });
+  if (error) return { error: error.message };
+  revalidatePath('/household');
+  revalidatePath('/trips', 'layout');
+  return {};
+}
+
+export async function declineHouseholdClaim(householdId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('decline_household_claim', { p_household_id: householdId });
+  if (error) return { error: error.message };
+  revalidatePath('/household');
+  revalidatePath('/trips', 'layout');
+  return {};
+}
