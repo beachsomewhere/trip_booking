@@ -37,6 +37,11 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
 
   const locks = await loadPhaseLocks(id, 'destination', ctx, newestProposalAt);
   const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
+  // Nothing to lock in if every option on the table is impossible for someone.
+  // Locking would otherwise record unanimous agreement on a destination that
+  // cannot happen, and the group would only find out at the next step.
+  const workable = base.filter(({ item }) => !item.blocked);
+  const nothingWorks = base.length > 0 && workable.length === 0;
 
   const items: BoardItem[] = base.map(({ proposal, item }) => ({
     ...item,
@@ -98,6 +103,12 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
           rows={locks}
           isOrganizer={ctx.isOrganizer}
           canLock={ctx.myFamily?.status === 'active'}
+          blockedReason={
+            nothingWorks
+              ? `Every destination on the table doesn't work for at least one family. Somebody needs ` +
+                `to suggest one that works for everyone before this step can be locked in.`
+              : null
+          }
         />
       ) : null}
 

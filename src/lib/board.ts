@@ -40,6 +40,9 @@ export function boardBase<P extends MinimalProposal & { note?: string | null }>(
           yesFamilyNames: t.yesFamilyIds.map(nameOf),
           maybeFamilyNames: t.maybeFamilyIds.map(nameOf),
           noFamilyNames: t.noFamilyIds.map(nameOf),
+          // Anyone who said "doesn't work" makes this option unusable as it
+          // stands — the group has to change the option, not out-vote them.
+          blocked: t.no > 0,
           myVote,
           isLeader: front?.proposalId === proposal.id,
         } satisfies Omit<BoardItem, 'body'>,

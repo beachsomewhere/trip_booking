@@ -4,7 +4,7 @@ import { PhaseStepper } from '@/components/PhaseStepper';
 import { Badge } from '@/components/ui';
 import { loadTripContext } from '@/lib/queries';
 import { daysUntil } from '@/lib/consensus';
-import { pluralize } from '@/lib/format';
+import { formatDateRange, pluralize } from '@/lib/format';
 
 export default async function TripLayout({
   children,
@@ -37,6 +37,24 @@ export default async function TripLayout({
               </p>
               {trip.description ? (
                 <p className="mt-1 max-w-xl text-sm text-text">{trip.description}</p>
+              ) : null}
+
+              {/* Settled decisions belong at the top, not buried on the step
+                  that produced them — this is the answer to "so what did we
+                  actually agree?", which is asked far more often than it is
+                  decided. */}
+              {trip.agreed_start_date && trip.agreed_end_date ? (
+                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <span className="font-medium text-accent">
+                    {formatDateRange(trip.agreed_start_date, trip.agreed_end_date)}
+                  </span>
+                  {trip.destination_name ? (
+                    <>
+                      <span className="text-muted">·</span>
+                      <span className="font-medium text-accent">{trip.destination_name}</span>
+                    </>
+                  ) : null}
+                </p>
               ) : null}
             </div>
             {finalized ? (

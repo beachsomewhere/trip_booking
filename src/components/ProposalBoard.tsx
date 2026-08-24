@@ -20,6 +20,8 @@ export interface BoardItem {
   yesFamilyNames: string[];
   maybeFamilyNames: string[];
   noFamilyNames: string[];
+  /** Someone said this doesn't work for them, so it cannot simply be chosen. */
+  blocked: boolean;
   myVote: VoteChoice | null;
   isLeader: boolean;
 }
@@ -146,16 +148,26 @@ function ProposalCard({
       <div className="flex flex-wrap gap-2">
         {isOrganizer ? (
           <Button
-            variant={item.isLeader ? 'primary' : 'secondary'}
+            variant={item.blocked ? 'secondary' : item.isLeader ? 'primary' : 'secondary'}
             disabled={pending}
             onClick={() => {
-              if (!window.confirm(`${resolveLabel} This closes this step for everyone.`)) return;
+              // A "doesn't work" is a statement that the family cannot come.
+              // Choosing it anyway means choosing to exclude them, so it takes a
+              // sharper confirmation than "are you sure".
+              const warning = item.blocked
+                ? `${listFamilies(item.noFamilyNames)} said this doesn't work for them. ` +
+                  `Choosing it means going ahead without them. Continue?`
+                : item.maybe > 0
+                  ? `${listFamilies(item.maybeFamilyNames)} said this isn't ideal, but would come. ` +
+                    `${resolveLabel}?`
+                  : `${resolveLabel} This closes this step for everyone.`;
+              if (!window.confirm(warning)) return;
               start(() => {
                 void resolveProposal(kind, tripId, item.id);
               });
             }}
           >
-            {resolveLabel}
+            {item.blocked ? `${resolveLabel} anyway` : resolveLabel}
           </Button>
         ) : null}
         {/* Withdrawing is only meaningful while the step is still open. */}
