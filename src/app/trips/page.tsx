@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
+import { PendingFriendRequests } from '@/components/friends/PendingFriendRequests';
+import { loadPendingFriendRequests } from '@/actions/friends';
 import { Badge, Button, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient, getUser } from '@/lib/supabase/server';
 import { PHASE_META, phaseHref, type TripPhase } from '@/lib/phases';
@@ -13,10 +15,13 @@ export default async function TripsPage() {
 
   const supabase = await createClient();
   // RLS scopes this to trips the signed-in user is actually part of.
-  const { data: trips, error } = await supabase
-    .from('trips')
-    .select('id, name, phase, target_finalize_by, organizer_user_id, families!families_trip_id_fkey(id, status)')
-    .order('created_at', { ascending: false });
+  const [{ data: trips, error }, pendingRequests] = await Promise.all([
+    supabase
+      .from('trips')
+      .select('id, name, phase, target_finalize_by, organizer_user_id, families!families_trip_id_fkey(id, status)')
+      .order('created_at', { ascending: false }),
+    loadPendingFriendRequests(),
+  ]);
   if (error) console.error('[trips] query failed', error);
 
   return (
@@ -31,6 +36,8 @@ export default async function TripsPage() {
         </div>
 
         <div className="mt-6 space-y-3">
+          <PendingFriendRequests requests={pendingRequests} />
+
           {!trips || trips.length === 0 ? (
             <EmptyState
               title="No trips yet"

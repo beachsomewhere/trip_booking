@@ -492,6 +492,60 @@ export type Database = {
           },
         ]
       }
+      household_links: {
+        Row: {
+          created_at: string
+          expires_at: string
+          from_household_id: string
+          id: string
+          requested_by_user_id: string | null
+          responded_at: string | null
+          status: string
+          to_email: string
+          to_household_id: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          from_household_id: string
+          id?: string
+          requested_by_user_id?: string | null
+          responded_at?: string | null
+          status?: string
+          to_email: string
+          to_household_id?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          from_household_id?: string
+          id?: string
+          requested_by_user_id?: string | null
+          responded_at?: string | null
+          status?: string
+          to_email?: string
+          to_household_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_links_from_household_id_fkey"
+            columns: ["from_household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_links_to_household_id_fkey"
+            columns: ["to_household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_people: {
         Row: {
           birth_month: number | null
@@ -1076,6 +1130,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_friend: { Args: { p_token: string }; Returns: string }
       accept_invitation: { Args: { p_token: string }; Returns: string }
       advance_phase: {
         Args: {
@@ -1106,9 +1161,31 @@ export type Database = {
             }
             Returns: string
           }
+      decline_friend: { Args: { p_token: string }; Returns: undefined }
       decline_invitation: { Args: { p_token: string }; Returns: string }
       delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
       ensure_household: { Args: { p_name?: string }; Returns: string }
+      friend_link_for_token: {
+        Args: { p_token: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          from_household_id: string
+          id: string
+          requested_by_user_id: string | null
+          responded_at: string | null
+          status: string
+          to_email: string
+          to_household_id: string | null
+          token: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "household_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       invite_family: {
         Args: { p_emails: string[]; p_name: string; p_trip_id: string }
         Returns: string
@@ -1124,10 +1201,40 @@ export type Database = {
           household_id: string
           last_seen: string
           name: string
+          source: string
         }[]
       }
       my_family_id: { Args: { p_trip_id: string }; Returns: string }
+      my_friends: {
+        Args: never
+        Returns: {
+          emails: string[]
+          household_id: string
+          link_id: string
+          name: string
+          since: string
+        }[]
+      }
+      pending_friend_requests: {
+        Args: never
+        Returns: {
+          from_name: string
+          link_id: string
+          requested_at: string
+          token: string
+        }[]
+      }
+      remove_friend: { Args: { p_link_id: string }; Returns: undefined }
       rename_household: { Args: { p_name: string }; Returns: undefined }
+      request_friend: {
+        Args: { p_email: string }
+        Returns: {
+          already_registered: boolean
+          friend_household_id: string
+          link_id: string
+          link_token: string
+        }[]
+      }
       resolve_anchor: {
         Args: { p_proposal_id: string; p_trip_id: string }
         Returns: undefined
@@ -1141,6 +1248,15 @@ export type Database = {
         Returns: undefined
       }
       resolve_lodging_prefs: { Args: { p_trip_id: string }; Returns: undefined }
+      sent_friend_requests: {
+        Args: never
+        Returns: {
+          link_id: string
+          requested_at: string
+          to_email: string
+          token: string
+        }[]
+      }
       set_family_status: {
         Args: {
           p_family_id: string

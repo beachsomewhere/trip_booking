@@ -40,6 +40,23 @@ export function siteUrl(): string {
   return 'http://localhost:3000';
 }
 
-/** Resend is optional in dev — see sendInviteEmail's console fallback. */
-export const resendApiKey = () => process.env.RESEND_API_KEY;
+/**
+ * Resend, but never by accident from a laptop.
+ *
+ * Every email this app sends — invitations, reminders, friend requests — goes
+ * out through Resend from the server, in any environment. Mailpit only ever
+ * catches Supabase's own auth mail, so a local test of the invite flow with a
+ * real address sends a real email to a real person.
+ *
+ * Outside production the key is therefore ignored unless EMAIL_SEND_FOR_REAL=1
+ * is set deliberately. Each sender falls back to logging the URL, which is what
+ * you actually want while testing anyway.
+ */
+export const resendApiKey = () => {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return undefined;
+  if (process.env.NODE_ENV === 'production') return key;
+  if (process.env.EMAIL_SEND_FOR_REAL === '1') return key;
+  return undefined;
+};
 export const emailFrom = () => process.env.EMAIL_FROM ?? 'Trip Booker <onboarding@resend.dev>';

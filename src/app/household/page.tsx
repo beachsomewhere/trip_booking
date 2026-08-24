@@ -3,6 +3,13 @@ import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { AttendeeEditor } from '@/components/families/AttendeeEditor';
 import { loadMyHousehold, saveHouseholdPeople } from '@/actions/household';
+import { FriendsCard } from '@/components/friends/FriendsCard';
+import { PendingFriendRequests } from '@/components/friends/PendingFriendRequests';
+import {
+  loadFriends,
+  loadPendingFriendRequests,
+  loadSentFriendRequests,
+} from '@/actions/friends';
 import { HouseholdNameForm } from '@/components/HouseholdNameForm';
 import { Card, PageTitle } from '@/components/ui';
 import { getUser } from '@/lib/supabase/server';
@@ -17,7 +24,12 @@ export default async function HouseholdPage() {
   const user = await getUser();
   if (!user) redirect('/login?next=/household');
 
-  const { people, householdName = '' } = await loadMyHousehold();
+  const [{ people, householdName = '' }, friends, sent, pendingRequests] = await Promise.all([
+    loadMyHousehold(),
+    loadFriends(),
+    loadSentFriendRequests(),
+    loadPendingFriendRequests(),
+  ]);
 
   return (
     <>
@@ -32,6 +44,8 @@ export default async function HouseholdPage() {
             title="Your family"
             subtitle="Entered once and reused. Every new trip starts from this — you just tick who's going that time, and anyone with an email can follow along."
           />
+
+          <PendingFriendRequests requests={pendingRequests} />
 
           <Card>
             <HouseholdNameForm initial={householdName} />
@@ -53,6 +67,10 @@ export default async function HouseholdPage() {
                 emails: p.emails ?? '',
               }))}
             />
+          </Card>
+
+          <Card>
+            <FriendsCard friends={friends} sent={sent} />
           </Card>
 
           <p className="text-sm text-muted">

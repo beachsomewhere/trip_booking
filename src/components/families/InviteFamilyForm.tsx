@@ -15,6 +15,8 @@ export interface KnownFamily {
   householdId: string | null;
   name: string;
   emails: string[];
+  /** Where they came from: your saved circle, or a trip you shared. */
+  source: 'friend' | 'trip';
 }
 
 /**
@@ -70,9 +72,11 @@ export function InviteFamilyForm({
                 <span className="block font-medium text-text">{k.name}</span>
                 <span className="block text-xs text-muted">{k.emails.join(', ')}</span>
                 <span className="block text-xs text-muted">
-                  {k.householdId
-                    ? 'Family saved — they only confirm who\u2019s coming'
-                    : 'Never joined a trip yet'}
+                  {k.source === 'friend'
+                    ? 'In your circle'
+                    : k.householdId
+                      ? 'Family saved — they only confirm who\u2019s coming'
+                      : 'Never joined a trip yet'}
                 </span>
               </button>
             ))}
@@ -85,8 +89,12 @@ export function InviteFamilyForm({
         /* The picker vanishing entirely reads as "this feature does not exist",
            which is how it was first reported. Say why it is empty instead. */
         <p className="text-xs text-muted">
-          Families you&apos;ve shared a trip with will appear here to pick from, so you only type
-          their details once.
+          Families you&apos;ve shared a trip with appear here to pick from, so you only type their
+          details once. You can also add families ahead of time under{' '}
+          <a href="/household" className="text-accent underline underline-offset-4">
+            Your family
+          </a>
+          .
         </p>
       )}
 

@@ -356,6 +356,8 @@ export async function loadKnownFamilies(tripId: string) {
     householdId: f.household_id,
     name: f.name,
     emails: f.emails ?? [],
+    /** 'friend' — in your circle. 'trip' — you shared a trip with them. */
+    source: (f.source ?? 'trip') as 'friend' | 'trip',
   }));
 }
 

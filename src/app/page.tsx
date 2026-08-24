@@ -2,12 +2,15 @@ import Link from 'next/link';
 import { getUser } from '@/lib/supabase/server';
 import { Button } from '@/components/ui';
 
+// Four steps, matching PHASES in lib/phases.ts. There was a fifth — pick a
+// point and a radius — and it was cut: the places people actually paste are
+// what says where the group wants to be, so drawing a circle first was a
+// decision nobody needed to make.
 const STEPS = [
   { n: '1', t: 'Who', d: 'Invite families by email. Spouses share one entry, one vote, one headcount.' },
   { n: '2', t: 'When', d: 'Everyone posts the weeks that work. Overlaps light up.' },
   { n: '3', t: 'Where', d: 'Propose a destination. Others just vote yes or no.' },
-  { n: '4', t: 'What area', d: 'Drop a pin and a radius — the lift base, the old town.' },
-  { n: '5', t: 'Where to stay', d: 'Shortlist places, rank your top five, see where the group lands.' },
+  { n: '4', t: 'Where to stay', d: 'Shortlist places, rank your top five, see where the group lands.' },
 ];
 
 export default async function Home() {
@@ -29,7 +32,7 @@ export default async function Home() {
           Stop saying you should go somewhere.
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-lg text-muted">
-          Group trips die in the group chat. This walks everyone through the five decisions that
+          Group trips die in the group chat. This walks everyone through the four decisions that
           actually matter — in order, one at a time — and gets you to a booking in under a week.
         </p>
         <div className="mt-8 flex justify-center gap-3">

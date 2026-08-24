@@ -79,6 +79,12 @@ which is why the progress bar and the organizer's prompt can never disagree.
 phase-parameterized actions in `src/actions/proposals.ts`. Adding a fourth voting step is a table plus a
 `body` renderer, not a new feature.
 
+**Your circle outlives trips too.** `household_links` records families you travel with, added by email
+from Your family and confirmed by them. Once accepted, both sides see each other in the invite picker on
+every future trip, so a family's address is typed exactly once, ever. Accepting shares a name and email
+addresses and nothing else — the same thing sharing a trip already exposes, so being in someone's circle
+reveals no more than travelling with them once did.
+
 **Households outlive trips.** Birth month and year are collected once and stored on a household that
 persists across trips, so the second invitation asks only *who is coming this time* — not everyone's
 birthday again. Ages are computed against the trip's own start date, never stored.
@@ -146,6 +152,7 @@ are proxied through `/api/places/*`, because a Places photo URL embeds the key.
 | `GOOGLE_MAPS_API_KEY` | destination autocomplete | optional — see below |
 | `RESEND_API_KEY` | real invite email | optional — see below |
 | `EMAIL_FROM` | real invite email | must be a verified Resend sender |
+| `EMAIL_SEND_FOR_REAL` | sending real mail from a laptop | set to `1` only when you mean it — see below |
 
 ### Google Places
 
@@ -159,10 +166,17 @@ Vercel's egress IPs are not fixed.
 
 ### Email
 
-Without `RESEND_API_KEY` the app **logs the invite URL to the server console** and shows the organizer a
-copyable link on the Who screen, rather than failing. Invitations are never lost to a missing key.
+Without `RESEND_API_KEY` the app **logs the invite URL to the server console** and shows the sender a
+copyable link instead, rather than failing. Invitations are never lost to a missing key.
 
 For real email, add a Resend key and verify a sending domain (`invites@lockthetrip.online`).
+
+**Mailpit does not catch app email.** It only intercepts Supabase's own auth mail — magic links. Every
+email this app composes itself (invitations, reminders, friend requests) goes out through Resend from the
+server, in any environment. A local test of the invite flow with a colleague's real address would send
+them a real email. So outside `NODE_ENV=production` the Resend key is deliberately ignored and every
+sender falls back to logging its URL; set `EMAIL_SEND_FOR_REAL=1` to override that when you actually want
+to watch a real send land.
 
 ---
 
