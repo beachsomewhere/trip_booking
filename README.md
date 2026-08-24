@@ -123,9 +123,19 @@ even **photos** are proxied through `/api/places/*`, because a Places photo URL 
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | everything | from `supabase status` or the dashboard |
 | `SUPABASE_SERVICE_ROLE_KEY` | invite links | server-only — never prefix with `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_SITE_URL` | invite + sign-in links | must match the host people actually browse |
-| `GOOGLE_MAPS_API_KEY` | place search | enable **Places API (New)**; optional |
+| `GOOGLE_MAPS_API_KEY` | place search | optional — see below |
 | `RESEND_API_KEY` | real invite email | optional — see below |
 | `EMAIL_FROM` | real invite email | must be a verified Resend sender |
+
+### Google Places
+
+Enable **exactly one** API on the GCP project: **Places API (New)**. Not the legacy "Places API", and
+no Maps SDK — the app renders no map. It calls `places:autocomplete`, `places/{id}`, and
+`places:searchNearby`, plus the photo media endpoint.
+
+The key is server-side only. Restrict it to *Places API (New)* under API restrictions, and leave
+application restrictions as **None** — a referrer restriction cannot match a server-side call, and
+Vercel's egress IPs are not fixed.
 
 ### Email
 
