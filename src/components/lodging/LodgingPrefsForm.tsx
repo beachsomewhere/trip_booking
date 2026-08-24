@@ -10,7 +10,12 @@ const TYPES = ['hotel', 'short_term_rental', 'resort', 'cabin', 'hostel'] as con
 
 const TOGETHER = [
   { value: 'together', label: 'All under one roof', hint: 'One place big enough for everyone.' },
-  { value: 'separate_ok', label: 'Separate is fine', hint: 'Nearby units work for us.' },
+  { value: 'separate_ok', label: 'Separate is fine', hint: 'Either way works for us.' },
+  {
+    value: 'prefer_separate',
+    label: 'Our own place',
+    hint: "We'd rather not share — we'll look for a place that fits just us.",
+  },
   { value: 'no_preference', label: 'No strong feeling', hint: 'Go with whatever suits the group.' },
 ] as const;
 
@@ -53,7 +58,7 @@ export function LodgingPrefsForm({
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-text">Should everyone stay together?</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           {TOGETHER.map((o) => (
             <label
               key={o.value}

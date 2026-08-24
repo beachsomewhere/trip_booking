@@ -126,12 +126,18 @@ export async function placeDetails(placeId: string): Promise<PlaceDetail> {
   return toDetail((await res.json()) as RawPlace);
 }
 
-/** Maps our housing types onto the Places type vocabulary. */
+/**
+ * Maps our housing types onto the Places type vocabulary.
+ *
+ * Every value here is from the Places lodging category. `apartment_complex` used
+ * to sit under short-term rental and is not a lodging type, so it silently
+ * contributed nothing to the filter.
+ */
 export const PLACE_TYPES: Record<string, string[]> = {
-  hotel: ['hotel', 'motel'],
-  short_term_rental: ['guest_house', 'cottage', 'apartment_complex'],
+  hotel: ['hotel', 'motel', 'extended_stay_hotel', 'inn'],
+  short_term_rental: ['guest_house', 'cottage', 'private_guest_room', 'bed_and_breakfast'],
   resort: ['resort_hotel'],
-  cabin: ['cottage', 'campground'],
+  cabin: ['cottage', 'campground', 'rv_park', 'farmstay'],
   hostel: ['hostel'],
 };
 

@@ -42,12 +42,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ configured: true, places: [], noCoordinates: true });
   }
 
+  // An explicit filter beats the trip's resolved set. The resolved set is the
+  // union of what every family said they'd stay in, so it is always broad —
+  // narrowing it was impossible from the screen doing the searching.
+  const requested = request.nextUrl.searchParams
+    .get('types')
+    ?.split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
   try {
     const places = await searchLodging({
       lat,
       lng,
       radiusMi: Number(trip?.anchor_radius_mi ?? 15),
-      housingTypes: trip?.housing_types ?? undefined,
+      housingTypes: requested?.length ? requested : (trip?.housing_types ?? undefined),
     });
 
     return NextResponse.json({

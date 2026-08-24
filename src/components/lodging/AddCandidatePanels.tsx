@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState, useTransition } from 'react';
 import { addCandidate, addManualCandidate } from '@/actions/lodging';
 import type { ActionState } from '@/actions/auth';
-import { Button, Card, EmptyState, Field, FormError, Input } from '@/components/ui';
+import { Button, Card, EmptyState, Field, FormError, Input, cx } from '@/components/ui';
 
 interface FoundPlace {
   placeId: string;
@@ -32,14 +32,28 @@ const PRICE_LABEL: Record<string, string> = {
  * pretend to: they show what Google actually knows, and the group's own
  * headcount is displayed alongside so people can judge fit themselves.
  */
+const TYPE_FILTERS = [
+  { value: 'hotel', label: 'Hotels' },
+  { value: 'short_term_rental', label: 'Rentals' },
+  { value: 'resort', label: 'Resorts' },
+  { value: 'cabin', label: 'Cabins' },
+  { value: 'hostel', label: 'Hostels' },
+];
+
 export function LodgingSearchPanel({
   tripId,
   headcount,
   existingPlaceIds,
+  groupTypes,
+  remaining,
 }: {
   tripId: string;
   headcount: number;
   existingPlaceIds: string[];
+  /** What the group said they'd stay in — the default filter. */
+  groupTypes: string[];
+  /** How many more this family may add. */
+  remaining: number;
 }) {
   const [places, setPlaces] = useState<FoundPlace[]>([]);
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -48,12 +62,17 @@ export function LodgingSearchPanel({
   const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
   const [added, setAdded] = useState<string[]>(existingPlaceIds);
+  const [types, setTypes] = useState<string[]>(groupTypes);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Inside the async body, not the effect body: setting state synchronously
+      // during an effect triggers a cascading render.
+      setLoading(true);
       try {
-        const res = await fetch(`/api/places/lodging?tripId=${tripId}`);
+        const query = types.length ? `&types=${types.join(',')}` : '';
+        const res = await fetch(`/api/places/lodging?tripId=${tripId}${query}`);
         const json = await res.json();
         if (cancelled) return;
         setConfigured(json.configured ?? false);
@@ -69,9 +88,45 @@ export function LodgingSearchPanel({
     return () => {
       cancelled = true;
     };
-  }, [tripId]);
+  }, [tripId, types]);
 
-  if (loading) return <p className="text-sm text-muted">Looking for places nearby…</p>;
+  // Chips drive the query rather than filtering what came back — the type is
+  // part of the Places request, so narrowing has to re-ask.
+  const filters = (
+    <div className="flex flex-wrap items-center gap-2">
+      {TYPE_FILTERS.map((f) => {
+        const on = types.includes(f.value);
+        return (
+          <button
+            key={f.value}
+            type="button"
+            aria-pressed={on}
+            onClick={() =>
+              setTypes((t) => (on ? t.filter((x) => x !== f.value) : [...t, f.value]))
+            }
+            className={cx(
+              'rounded-lg border px-3 py-1.5 text-sm transition-colors',
+              on ? 'border-accent bg-accent-soft text-accent' : 'border-edge text-muted',
+            )}
+          >
+            {f.label}
+          </button>
+        );
+      })}
+      {types.length === 0 ? (
+        <span className="text-xs text-muted">Showing everything</span>
+      ) : null}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {filters}
+        <p className="text-sm text-muted">Looking for places nearby…</p>
+      </div>
+    );
+  }
 
   if (configured === false) {
     return (
@@ -102,7 +157,21 @@ export function LodgingSearchPanel({
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="space-y-3">
+      {filters}
+
+      {remaining <= 0 ? (
+        <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
+          You&apos;ve added your three. Remove one below if you find something better — a list
+          nobody reads is worse than a short one.
+        </p>
+      ) : (
+        <p className="text-sm text-muted">
+          {remaining} more you can add. Look through what&apos;s already here first.
+        </p>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
       {places.map((p) => {
         const isAdded = added.includes(p.placeId);
         return (
@@ -129,7 +198,7 @@ export function LodgingSearchPanel({
             </div>
             <Button
               variant={isAdded ? 'secondary' : 'primary'}
-              disabled={isAdded || pending}
+              disabled={isAdded || pending || remaining <= 0}
               onClick={() =>
                 start(async () => {
                   await addCandidate(tripId, {
@@ -153,6 +222,7 @@ export function LodgingSearchPanel({
           </Card>
         );
       })}
+      </div>
     </div>
   );
 }

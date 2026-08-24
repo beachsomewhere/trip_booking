@@ -30,12 +30,15 @@ export function CandidateGrid({
   canPick,
   pickCount,
   headcount,
+  headcountIsMineOnly = false,
 }: {
   tripId: string;
   candidates: CandidateView[];
   canPick: boolean;
   pickCount: number;
   headcount: number;
+  /** True when this family said they want their own place. */
+  headcountIsMineOnly?: boolean;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -47,6 +50,7 @@ export function CandidateGrid({
           canPick={canPick}
           pickCount={pickCount}
           headcount={headcount}
+          headcountIsMineOnly={headcountIsMineOnly}
         />
       ))}
     </div>
@@ -59,12 +63,14 @@ function CandidateCard({
   canPick,
   pickCount,
   headcount,
+  headcountIsMineOnly,
 }: {
   tripId: string;
   candidate: CandidateView;
   canPick: boolean;
   pickCount: number;
   headcount: number;
+  headcountIsMineOnly: boolean;
 }) {
   const [pending, start] = useTransition();
   const [note, setNote] = useState(c.myComment);
@@ -94,7 +100,8 @@ function CandidateCard({
             c.rating ? `${c.rating}★` : null,
           ]
             .filter(Boolean)
-            .join(' · ') || `No capacity listed — your group is ${headcount}`}
+            .join(' · ') ||
+            `No capacity listed — ${headcountIsMineOnly ? 'your family is' : 'your group is'} ${headcount}`}
         </p>
 
         {c.pickedByNames.length > 0 ? (

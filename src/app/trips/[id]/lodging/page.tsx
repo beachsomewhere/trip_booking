@@ -25,6 +25,15 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
   const allCandidates = rows('lodging_candidates', candidatesRes);
   const allPicks = rows('lodging_picks', picksRes);
   const allComments = rows('lodging_comments', commentsRes);
+
+  // Three suggestions per family, enforced in the database. Five families adding
+  // freely produces a list nobody reads, and a shortlist drawn from a list
+  // nobody read is worthless.
+  const myCandidateCount = allCandidates.filter(
+    (c) => c.added_by_family_id === ctx.myFamily?.id,
+  ).length;
+  const remainingSuggestions = Math.max(0, 3 - myCandidateCount);
+
   const done = isPhaseComplete(ctx.phase, 'lodging');
   // Same rule as the voting steps: a lock predating the newest candidate was a
   // verdict on a shorter list.
@@ -32,6 +41,12 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
   const locks = await loadPhaseLocks(id, 'lodging', ctx, newestCandidateAt);
 
   const myPrefs = allPrefs.find((p) => p.family_id === ctx.myFamily?.id);
+  // A family looking for its own place is shopping for its own headcount, not
+  // the group's — showing "sleeps 9 needed" to a family of three who said they
+  // want their own place is worse than showing nothing.
+  const lookingAlone = myPrefs?.stay_together_pref === 'prefer_separate';
+  const myHeadcount = ctx.myFamily?.family_attendees.length ?? 0;
+  const capacityNeeded = lookingAlone && myHeadcount > 0 ? myHeadcount : ctx.headcount;
   const prefsSettled = (ctx.trip.housing_types ?? []).length > 0;
   const familiesWithPrefs = allPrefs.length;
 
@@ -167,7 +182,8 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
                   candidates={views}
                   canPick={!done && ctx.myFamily?.status === 'active'}
                   pickCount={myPicks.length}
-                  headcount={ctx.headcount}
+                  headcount={capacityNeeded}
+                  headcountIsMineOnly={lookingAlone}
                 />
               </>
             )}
@@ -191,7 +207,9 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
                 </h2>
                 <LodgingSearchPanel
                   tripId={id}
-                  headcount={ctx.headcount}
+                  headcount={capacityNeeded}
+                  groupTypes={ctx.trip.housing_types ?? []}
+                  remaining={remainingSuggestions}
                   existingPlaceIds={allCandidates
                     .map((c) => c.google_place_id)
                     .filter((x): x is string => Boolean(x))}
@@ -203,7 +221,14 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
                   Found something yourself?
                 </h2>
                 <Card>
-                  <PasteLinkForm tripId={id} />
+                  {remainingSuggestions > 0 ? (
+                    <PasteLinkForm tripId={id} />
+                  ) : (
+                    <p className="text-sm text-muted">
+                      You&apos;ve suggested your three. Remove one above to swap it for something
+                      better.
+                    </p>
+                  )}
                 </Card>
               </section>
             </>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AppHeader } from '@/components/AppHeader';
 import { PhaseStepper } from '@/components/PhaseStepper';
+import { TripLiveRefresh } from '@/components/TripLiveRefresh';
 import { Badge } from '@/components/ui';
 import { loadTripContext } from '@/lib/queries';
 import { daysUntil } from '@/lib/consensus';
@@ -21,6 +22,7 @@ export default async function TripLayout({
   return (
     <>
       <AppHeader email={userEmail} />
+      <TripLiveRefresh tripId={id} />
       <div className="border-b border-edge bg-surface">
         <div className="mx-auto w-full max-w-4xl space-y-3 px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2">

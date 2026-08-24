@@ -1175,7 +1175,11 @@ export type Database = {
         | "hostel"
       lodging_source: "google" | "manual"
       proposal_status: "pending" | "approved" | "rejected"
-      stay_together_pref: "together" | "separate_ok" | "no_preference"
+      stay_together_pref:
+        | "together"
+        | "separate_ok"
+        | "no_preference"
+        | "prefer_separate"
       trip_phase:
         | "invites"
         | "dates"
@@ -1318,7 +1322,12 @@ export const Constants = {
       housing_type: ["hotel", "short_term_rental", "resort", "cabin", "hostel"],
       lodging_source: ["google", "manual"],
       proposal_status: ["pending", "approved", "rejected"],
-      stay_together_pref: ["together", "separate_ok", "no_preference"],
+      stay_together_pref: [
+        "together",
+        "separate_ok",
+        "no_preference",
+        "prefer_separate",
+      ],
       trip_phase: [
         "invites",
         "dates",
