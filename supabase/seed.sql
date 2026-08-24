@@ -91,3 +91,74 @@ begin
 
   raise notice 'seed applied: trip % ', v_trip;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Households for the seeded families.
+--
+-- The households migration backfills real deployments, but migrations run
+-- before this file on `db reset`, so local data would otherwise have no
+-- households and the "travelled with before" picker would look broken.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  r record;
+  v_household uuid;
+begin
+  for r in
+    select f.id as family_id, f.name as family_name, m.user_id
+      from families f
+      join lateral (
+        select user_id from family_members
+         where family_id = f.id and user_id is not null
+         order by is_primary desc limit 1
+      ) m on true
+     where f.household_id is null
+  loop
+    select household_id into v_household from household_users where user_id = r.user_id limit 1;
+
+    if v_household is null then
+      insert into households (name, created_by_user_id)
+      values (r.family_name, r.user_id) returning id into v_household;
+      insert into household_users (household_id, user_id) values (v_household, r.user_id);
+    end if;
+
+    update families set household_id = v_household where id = r.family_id;
+
+    insert into household_people (household_id, name, birth_year, birth_month)
+    select v_household, a.name, a.birth_year, a.birth_month
+      from family_attendees a
+     where a.family_id = r.family_id and coalesce(trim(a.name), '') <> ''
+       and not exists (
+         select 1 from household_people hp
+          where hp.household_id = v_household and lower(hp.name) = lower(a.name)
+       );
+  end loop;
+
+  update family_attendees a
+     set person_id = hp.id
+    from families f
+    join household_people hp on hp.household_id = f.household_id
+   where a.family_id = f.id and a.person_id is null
+     and lower(hp.name) = lower(a.name);
+end $$;
+
+-- A second, brand-new trip for the same organizer: this is what exercises the
+-- "families you've travelled with" picker.
+do $$
+declare
+  v_trip   uuid := '11111111-1111-1111-1111-111111111112';
+  v_family uuid := '22222222-2222-2222-2222-222222222299';
+  v_kyle   uuid := '33333333-3333-3333-3333-333333333331';
+begin
+  if exists (select 1 from trips where id = v_trip) then return; end if;
+
+  insert into trips (id, name, organizer_user_id, phase, target_finalize_by)
+  values (v_trip, 'Beach week 2027', v_kyle, 'invites', current_date + 10);
+
+  insert into families (id, trip_id, name, status, created_by_user_id, household_id)
+  values (v_family, v_trip, 'The Barnes', 'active', v_kyle,
+          (select household_id from household_users where user_id = v_kyle limit 1));
+
+  insert into family_members (family_id, email, user_id, is_primary)
+  values (v_family, 'kyle@barnes.test', v_kyle, true);
+end $$;

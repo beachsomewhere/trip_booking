@@ -640,6 +640,32 @@ export type Database = {
           },
         ]
       }
+      household_person_emails: {
+        Row: {
+          created_at: string
+          email: string
+          person_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          person_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_person_emails_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "household_people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_users: {
         Row: {
           created_at: string
@@ -1115,8 +1141,18 @@ export type Database = {
         Returns: string
       }
       is_my_household: { Args: { p_household_id: string }; Returns: boolean }
+      is_my_person: { Args: { p_person_id: string }; Returns: boolean }
       is_trip_member: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_organizer: { Args: { p_trip_id: string }; Returns: boolean }
+      known_families: {
+        Args: { p_trip_id: string }
+        Returns: {
+          emails: string[]
+          household_id: string
+          last_seen: string
+          name: string
+        }[]
+      }
       my_family_id: { Args: { p_trip_id: string }; Returns: string }
       propose_family: {
         Args: {
@@ -1129,6 +1165,7 @@ export type Database = {
         }
         Returns: string
       }
+      rename_household: { Args: { p_name: string }; Returns: undefined }
       resolve_anchor: {
         Args: { p_proposal_id: string; p_trip_id: string }
         Returns: undefined
@@ -1160,6 +1197,10 @@ export type Database = {
       }
       set_trip_target: {
         Args: { p_target: string; p_trip_id: string }
+        Returns: undefined
+      }
+      sync_household_emails: {
+        Args: { p_family_id: string }
         Returns: undefined
       }
       trip_of_family: { Args: { p_family_id: string }; Returns: string }

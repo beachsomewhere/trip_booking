@@ -1,5 +1,5 @@
 import { AttendeeEditor } from '@/components/families/AttendeeEditor';
-import { loadHouseholdPeople, saveAttendees } from '@/actions/families';
+import { loadHouseholdPeople, loadKnownFamilies, saveAttendees } from '@/actions/families';
 import { FamilyProposalCard, type ProposalView } from '@/components/families/FamilyProposalCard';
 import { InviteFamilyForm } from '@/components/families/InviteFamilyForm';
 import {
@@ -26,6 +26,7 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
   // Prefill the attendee editor from this user's household, so a returning
   // family confirms who is coming instead of retyping everyone.
   const householdPeople = ctx.myFamily ? await loadHouseholdPeople(ctx.myFamily.id) : [];
+  const knownFamilies = await loadKnownFamilies(id);
 
   const [proposalsRes, votesRes, invitationsRes] = await Promise.all([
     supabase
@@ -155,6 +156,7 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
                         birthYear: p.birthYear,
                         birthMonth: p.birthMonth,
                         coming: p.coming,
+                        emails: p.emails ?? '',
                       }))}
                     />
                   </div>
@@ -198,7 +200,11 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
           />
         ) : (
           <Card>
-            <InviteFamilyForm tripId={id} mode={rosterOpen ? 'invite' : 'propose'} />
+            <InviteFamilyForm
+              tripId={id}
+              mode={rosterOpen ? 'invite' : 'propose'}
+              known={knownFamilies}
+            />
           </Card>
         )}
       </section>

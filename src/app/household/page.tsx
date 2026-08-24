@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { AttendeeEditor } from '@/components/families/AttendeeEditor';
 import { loadMyHousehold, saveHouseholdPeople } from '@/actions/household';
+import { HouseholdNameForm } from '@/components/HouseholdNameForm';
 import { Card, PageTitle } from '@/components/ui';
 import { getUser } from '@/lib/supabase/server';
 
@@ -16,7 +17,7 @@ export default async function HouseholdPage() {
   const user = await getUser();
   if (!user) redirect('/login?next=/household');
 
-  const { people } = await loadMyHousehold();
+  const { people, householdName = '' } = await loadMyHousehold();
 
   return (
     <>
@@ -29,8 +30,12 @@ export default async function HouseholdPage() {
         <div className="mt-4 space-y-6">
           <PageTitle
             title="Your family"
-            subtitle="Everyone who might come on a trip. Every new trip starts from this list — you just tick who's going that time."
+            subtitle="Entered once and reused. Every new trip starts from this — you just tick who's going that time, and anyone with an email can follow along."
           />
+
+          <Card>
+            <HouseholdNameForm initial={householdName} />
+          </Card>
 
           <Card>
             <AttendeeEditor
@@ -45,6 +50,7 @@ export default async function HouseholdPage() {
                 birthYear: p.birthYear,
                 birthMonth: p.birthMonth,
                 coming: true,
+                emails: p.emails ?? '',
               }))}
             />
           </Card>

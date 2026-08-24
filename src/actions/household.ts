@@ -20,8 +20,11 @@ export async function saveHouseholdPeople(
   const months = formData.getAll('birthMonth').map((v) => String(v).trim());
   const years = formData.getAll('birthYear').map((v) => String(v).trim());
   const personIds = formData.getAll('personId').map((v) => String(v).trim());
+  const emailLists = formData.getAll('personEmails').map((v) => String(v));
 
   const num = (v: string) => (v === '' ? null : Number(v));
+  const splitEmails = (v: string) =>
+    [...new Set(v.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))];
 
   const people = names
     .map((name, i) => ({
@@ -29,6 +32,7 @@ export async function saveHouseholdPeople(
       birth_month: num(months[i] ?? ''),
       birth_year: num(years[i] ?? ''),
       person_id: personIds[i] || null,
+      emails: splitEmails(emailLists[i] ?? ''),
     }))
     .filter((p) => p.name.length > 0);
 
@@ -53,6 +57,7 @@ export async function saveHouseholdPeople(
         .eq('id', person.person_id);
       if (error) return { error: error.message };
       keptIds.push(person.person_id);
+      await replaceEmails(supabase, person.person_id, person.emails);
     } else {
       const { data, error } = await supabase
         .from('household_people')
@@ -60,7 +65,10 @@ export async function saveHouseholdPeople(
         .select('id')
         .single();
       if (error) return { error: error.message };
-      if (data?.id) keptIds.push(data.id);
+      if (data?.id) {
+        keptIds.push(data.id);
+        await replaceEmails(supabase, data.id, person.emails);
+      }
     }
   }
 
@@ -79,24 +87,60 @@ export async function saveHouseholdPeople(
   return { ok: 'Saved. New trips will start with these people.' };
 }
 
+/** Emails are replaced wholesale so removing one here actually removes it. */
+async function replaceEmails(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  personId: string,
+  emails: string[],
+) {
+  await supabase.from('household_person_emails').delete().eq('person_id', personId);
+  if (emails.length > 0) {
+    await supabase
+      .from('household_person_emails')
+      .insert(emails.map((email) => ({ person_id: personId, email })));
+  }
+}
+
 export async function loadMyHousehold() {
   const supabase = await createClient();
   const { data: householdId } = await supabase.rpc('ensure_household');
   if (!householdId) return { householdId: null, people: [] };
 
-  const { data: people } = await supabase
-    .from('household_people')
-    .select('id, name, birth_year, birth_month')
-    .eq('household_id', householdId)
-    .order('birth_year', { ascending: true, nullsFirst: false });
+  const [{ data: people }, { data: household }] = await Promise.all([
+    supabase
+      .from('household_people')
+      .select('id, name, birth_year, birth_month, household_person_emails(email)')
+      .eq('household_id', householdId)
+      .order('birth_year', { ascending: true, nullsFirst: false }),
+    supabase.from('households').select('name').eq('id', householdId).maybeSingle(),
+  ]);
 
   return {
     householdId,
+    householdName: household?.name ?? '',
     people: (people ?? []).map((p) => ({
       personId: p.id,
       name: p.name,
       birthYear: p.birth_year == null ? '' : String(p.birth_year),
       birthMonth: p.birth_month == null ? '' : String(p.birth_month),
+      emails: (p.household_person_emails ?? []).map((e) => e.email).join(', '),
     })),
   };
+}
+
+/** Renames the household, and every trip it is on that can take the name. */
+export async function renameHousehold(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const name = String(formData.get('householdName') ?? '').trim();
+  if (!name) return { error: 'Your family needs a name.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('rename_household', { p_name: name });
+  if (error) return { error: error.message };
+
+  revalidatePath('/household');
+  revalidatePath('/trips');
+  return { ok: `Saved. You'll show up as ${name} on your trips.` };
 }

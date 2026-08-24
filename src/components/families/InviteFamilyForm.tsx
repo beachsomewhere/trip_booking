@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useRef } from 'react';
+import { useActionState, useRef, useState } from 'react';
 import { inviteFamily, proposeFamily } from '@/actions/families';
 import type { ActionState } from '@/actions/auth';
 import { Button, Field, FormError, Input, Textarea } from '@/components/ui';
@@ -10,19 +10,35 @@ import { Button, Field, FormError, Input, Textarea } from '@/components/ui';
  * families outright; afterwards anyone can suggest one, but it needs the other
  * families' approval before an email goes anywhere.
  */
+export interface KnownFamily {
+  householdId: string;
+  name: string;
+  emails: string[];
+}
+
 export function InviteFamilyForm({
   tripId,
   mode,
+  known = [],
 }: {
   tripId: string;
   mode: 'invite' | 'propose';
+  /** Families this organizer has travelled with before. */
+  known?: KnownFamily[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [name, setName] = useState('');
+  const [emails, setEmails] = useState('');
+
   const action = mode === 'invite' ? inviteFamily : proposeFamily;
   const [state, submit, pending] = useActionState<ActionState, FormData>(
     async (prev, formData) => {
       const result = await action(tripId, prev, formData);
-      if (result.ok) formRef.current?.reset();
+      if (result.ok) {
+        formRef.current?.reset();
+        setName('');
+        setEmails('');
+      }
       return result;
     },
     {},
@@ -30,12 +46,53 @@ export function InviteFamilyForm({
 
   return (
     <form ref={formRef} action={submit} className="space-y-4">
+      {/* Fills the fields below rather than inviting outright: the emails may be
+          stale, and after the roster locks this still has to go through the
+          group's approval gate like any other addition. */}
+      {known.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-text">You&apos;ve travelled with</p>
+          <div className="flex flex-wrap gap-2">
+            {known.map((k) => (
+              <button
+                key={k.householdId}
+                type="button"
+                onClick={() => {
+                  setName(k.name);
+                  setEmails(k.emails.join(', '));
+                }}
+                className="rounded-lg border border-edge bg-surface px-3 py-1.5 text-left text-sm hover:border-accent"
+              >
+                <span className="block font-medium text-text">{k.name}</span>
+                <span className="block text-xs text-muted">{k.emails.join(', ')}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted">
+            They already have their family saved, so they&apos;ll only confirm who&apos;s coming.
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Family name" hint="However the group refers to them — shown as typed.">
-          <Input name="name" required maxLength={60} placeholder="The Chens" />
+          <Input
+            name="name"
+            required
+            maxLength={60}
+            placeholder="The Chens"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </Field>
         <Field label="Email(s)" hint="Comma-separated. Both spouses share one family.">
-          <Input name="emails" required placeholder="kyle@example.com, sam@example.com" />
+          <Input
+            name="emails"
+            required
+            placeholder="kyle@example.com, sam@example.com"
+            value={emails}
+            onChange={(e) => setEmails(e.target.value)}
+          />
         </Field>
       </div>
 

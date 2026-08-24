@@ -215,6 +215,7 @@ export async function saveAttendees(
   const months = formData.getAll('birthMonth').map((v) => String(v).trim());
   const years = formData.getAll('birthYear').map((v) => String(v).trim());
   const personIds = formData.getAll('personId').map((v) => String(v).trim());
+  const emailLists = formData.getAll('personEmails').map((v) => String(v));
   const coming = formData.getAll('coming').map((v) => String(v) === '1');
 
   const num = (v: string) => (v === '' ? null : Number(v));
@@ -225,6 +226,14 @@ export async function saveAttendees(
       birth_month: num(months[i] ?? ''),
       birth_year: num(years[i] ?? ''),
       person_id: personIds[i] || null,
+      emails: [
+        ...new Set(
+          (emailLists[i] ?? '')
+            .split(/[\s,;]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      ],
       coming: coming[i] ?? true,
     }))
     .filter((p) => p.name.length > 0);
@@ -264,9 +273,21 @@ export async function saveAttendees(
     }
   }
 
+  // Addresses belong to people; replace them wholesale so a removal sticks.
+  for (const s2 of saved) {
+    if (!s2.id) continue;
+    await supabase.from('household_person_emails').delete().eq('person_id', s2.id);
+    if (s2.person.emails.length > 0) {
+      await supabase
+        .from('household_person_emails')
+        .insert(s2.person.emails.map((email) => ({ person_id: s2.id!, email })));
+    }
+  }
+
   // Make sure this trip's family is attached to the household, so a future
-  // visit prefills from it.
+  // visit prefills from it, then pull everyone's addresses onto this trip.
   await supabase.from('families').update({ household_id: householdId }).eq('id', familyId);
+  await supabase.rpc('sync_household_emails', { p_family_id: familyId });
 
   // Attendees are replaced wholesale — only the people marked as coming, with a
   // snapshot of their birth data so other families can read the headcount
@@ -298,6 +319,26 @@ export async function saveAttendees(
 }
 
 /**
+ * Families the caller has shared a trip with, for the invite picker.
+ *
+ * Returns only a display name and the emails they already had access to on that
+ * shared trip — never the other household's people or birth data.
+ */
+export async function loadKnownFamilies(tripId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('known_families', { p_trip_id: tripId });
+  if (error) {
+    console.error('[known_families]', error.message);
+    return [];
+  }
+  return (data ?? []).map((f) => ({
+    householdId: f.household_id,
+    name: f.name,
+    emails: f.emails ?? [],
+  }));
+}
+
+/**
  * The household's people, for prefilling a new trip.
  *
  * Anyone already on this trip is marked as coming; the rest are offered
@@ -312,7 +353,7 @@ export async function loadHouseholdPeople(familyId: string) {
   const [{ data: people }, { data: attending }] = await Promise.all([
     supabase
       .from('household_people')
-      .select('id, name, birth_year, birth_month')
+      .select('id, name, birth_year, birth_month, household_person_emails(email)')
       .eq('household_id', householdId)
       .order('birth_year', { ascending: true, nullsFirst: false }),
     supabase.from('family_attendees').select('person_id, name').eq('family_id', familyId),
@@ -326,6 +367,7 @@ export async function loadHouseholdPeople(familyId: string) {
     name: p.name,
     birthYear: p.birth_year == null ? '' : String(p.birth_year),
     birthMonth: p.birth_month == null ? '' : String(p.birth_month),
+    emails: (p.household_person_emails ?? []).map((e) => e.email).join(', '),
     // Match on name too, so attendees added before households existed still
     // show as coming rather than appearing to have been dropped.
     coming: attendingIds.has(p.id) || attendingNames.has(p.name.toLowerCase()),

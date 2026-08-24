@@ -13,6 +13,8 @@ export interface EditablePerson {
   birthYear: string;
   birthMonth: string;
   coming: boolean;
+  /** Comma-separated. Anyone with an address can sign in and follow the trip. */
+  emails: string;
 }
 
 let counter = 0;
@@ -23,6 +25,7 @@ export const blankPerson = (): EditablePerson => ({
   birthYear: '',
   birthMonth: '',
   coming: true,
+  emails: '',
 });
 
 /**
@@ -90,8 +93,12 @@ export function AttendeeEditor({
           return (
             <div
               key={row.key}
-              className={cx('flex items-center gap-2', showComing && !row.coming && 'opacity-50')}
+              className={cx(
+                'space-y-2 rounded-lg border border-edge p-2',
+                showComing && !row.coming && 'opacity-60',
+              )}
             >
+            <div className="flex items-center gap-2">
               {showComing ? (
                 <label className="flex w-9 justify-center">
                   <span className="sr-only">Coming on this trip</span>
@@ -163,6 +170,23 @@ export function AttendeeEditor({
               >
                 ×
               </Button>
+            </div>
+
+            {/* Addresses belong to the person, so the group knows whose is
+                whose — and anyone listed here can sign in and follow the trip,
+                whether or not they are travelling. */}
+            <div className="flex items-center gap-2 pl-2">
+              <span className="text-xs text-muted">Email</span>
+              <div className="flex-1">
+                <Input
+                  name="personEmails"
+                  value={row.emails}
+                  onChange={(e) => update(row.key, { emails: e.target.value })}
+                  placeholder="optional — kyle@example.com"
+                  aria-label={`Email for ${row.name || 'this person'}`}
+                />
+              </div>
+            </div>
             </div>
           );
         })}
