@@ -6,7 +6,9 @@ export interface InviteEmail {
   to: string;
   token: string;
   tripName: string;
-  fromFamily: string;
+  tripDescription?: string | null;
+  /** The family doing the inviting. Null when it cannot be determined. */
+  fromFamily: string | null;
   organizerEmail?: string | null;
 }
 
@@ -14,7 +16,7 @@ export function inviteUrl(token: string): string {
   return `${siteUrl()}/invite/${token}`;
 }
 
-function renderInvite({ tripName, fromFamily, token }: InviteEmail): string {
+function renderInvite({ tripName, fromFamily, token, tripDescription }: InviteEmail): string {
   const url = inviteUrl(token);
   return `
 <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1c1a17">
@@ -22,9 +24,15 @@ function renderInvite({ tripName, fromFamily, token }: InviteEmail): string {
     Lock the Trip
   </p>
   <h1 style="font-size:22px;margin:0 0 12px">You're invited to ${escapeHtml(tripName)}</h1>
+  ${
+    tripDescription
+      ? `<p style="font-size:15px;line-height:1.55;color:#1c1a17;margin:0 0 16px;padding:12px 14px;background:#f4efe6;border-radius:8px">${escapeHtml(tripDescription)}</p>`
+      : ''
+  }
   <p style="font-size:15px;line-height:1.55;color:#3d3a33;margin:0 0 20px">
-    ${escapeHtml(fromFamily)} added your family. You'll pick dates first, then where to go,
-    then where to stay — a few taps each, one decision at a time.
+    ${fromFamily ? `${escapeHtml(fromFamily)} added your family.` : 'You have been added to this trip.'}
+    You'll pick dates first, then where to go, then where to stay — a few taps each,
+    one decision at a time.
   </p>
   <p style="margin:0 0 24px">
     <a href="${url}"

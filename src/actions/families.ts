@@ -41,10 +41,15 @@ const familyFormSchema = z.object({
 async function flushInvitations(tripId: string): Promise<{ sent: number; failed: number }> {
   const supabase = await createClient();
   const [{ data: trip }, { data: pending }] = await Promise.all([
-    supabase.from('trips').select('name, organizer_user_id').eq('id', tripId).maybeSingle(),
+    supabase.from('trips').select('name, description, organizer_user_id').eq('id', tripId).maybeSingle(),
     supabase
       .from('invitations')
-      .select('id, email, token, family_id, families!invitations_family_id_fkey(name)')
+      // invited_by_family_id, NOT family_id: the latter is the family being
+      // invited, which is how every invite email ended up telling recipients
+      // that they had added themselves.
+      .select(
+        'id, email, token, family_id, invited_by:families!invitations_invited_by_family_id_fkey(name)',
+      )
       .eq('trip_id', tripId)
       .is('sent_at', null),
   ]);
@@ -60,7 +65,8 @@ async function flushInvitations(tripId: string): Promise<{ sent: number; failed:
       to: inv.email,
       token: inv.token,
       tripName: trip.name,
-      fromFamily: inv.families?.name ?? 'organizer',
+      tripDescription: trip.description,
+      fromFamily: inv.invited_by?.name ?? null,
       organizerEmail: user?.email,
     });
     if (delivered) sent++;
@@ -342,7 +348,7 @@ export async function peekInvitation(token: string) {
   const admin = createAdminClient();
   const { data } = await admin
     .from('invitations')
-    .select('email, expires_at, accepted_at, trip_id, trips!invitations_trip_id_fkey(name), families!invitations_family_id_fkey(name)')
+    .select('email, expires_at, accepted_at, trip_id, trips!invitations_trip_id_fkey(name, description), families!invitations_family_id_fkey(name)')
     .eq('token', token)
     .maybeSingle();
   return data;

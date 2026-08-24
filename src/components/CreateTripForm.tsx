@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { createTrip } from '@/actions/trips';
 import type { ActionState } from '@/actions/auth';
-import { Button, Field, FormError, Input } from '@/components/ui';
+import { Button, Field, FormError, Input, Textarea } from '@/components/ui';
 
 export function CreateTripForm({ familyName = '' }: { familyName?: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(createTrip, {});
@@ -27,6 +27,16 @@ export function CreateTripForm({ familyName = '' }: { familyName?: string }) {
           maxLength={60}
           placeholder="The Barnes"
           defaultValue={familyName}
+        />
+      </Field>
+      <Field
+        label="What kind of trip is it?"
+        hint="Who it's for and roughly what it is — this is the first thing invited families read."
+      >
+        <Textarea
+          name="description"
+          maxLength={500}
+          placeholder="Adults only, long weekend. Kids staying with grandparents."
         />
       </Field>
       <Field

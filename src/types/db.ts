@@ -722,6 +722,7 @@ export type Database = {
           expires_at: string
           family_id: string
           id: string
+          invited_by_family_id: string | null
           sent_at: string | null
           token: string
           trip_id: string
@@ -734,6 +735,7 @@ export type Database = {
           expires_at?: string
           family_id: string
           id?: string
+          invited_by_family_id?: string | null
           sent_at?: string | null
           token?: string
           trip_id: string
@@ -746,6 +748,7 @@ export type Database = {
           expires_at?: string
           family_id?: string
           id?: string
+          invited_by_family_id?: string | null
           sent_at?: string | null
           token?: string
           trip_id?: string
@@ -754,6 +757,13 @@ export type Database = {
           {
             foreignKeyName: "invitations_family_id_fkey"
             columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_invited_by_family_id_fkey"
+            columns: ["invited_by_family_id"]
             isOneToOne: false
             referencedRelation: "families"
             referencedColumns: ["id"]
@@ -1059,6 +1069,7 @@ export type Database = {
           anchor_name: string | null
           anchor_radius_mi: number | null
           created_at: string
+          description: string | null
           destination_lat: number | null
           destination_lng: number | null
           destination_name: string | null
@@ -1079,6 +1090,7 @@ export type Database = {
           anchor_name?: string | null
           anchor_radius_mi?: number | null
           created_at?: string
+          description?: string | null
           destination_lat?: number | null
           destination_lng?: number | null
           destination_name?: string | null
@@ -1099,6 +1111,7 @@ export type Database = {
           anchor_name?: string | null
           anchor_radius_mi?: number | null
           created_at?: string
+          description?: string | null
           destination_lat?: number | null
           destination_lng?: number | null
           destination_name?: string | null
@@ -1130,10 +1143,24 @@ export type Database = {
         Args: { p_selection_id: string; p_trip_id: string }
         Returns: undefined
       }
-      create_trip: {
-        Args: { p_family_name: string; p_name: string; p_target_days?: number }
-        Returns: string
-      }
+      create_trip:
+        | {
+            Args: {
+              p_family_name: string
+              p_name: string
+              p_target_days?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_description?: string
+              p_family_name: string
+              p_name: string
+              p_target_days?: number
+            }
+            Returns: string
+          }
       delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
       ensure_household: { Args: { p_name?: string }; Returns: string }
       invite_family: {
@@ -1194,6 +1221,10 @@ export type Database = {
           p_trip_id: string
         }
         Returns: string
+      }
+      set_trip_description: {
+        Args: { p_description: string; p_trip_id: string }
+        Returns: undefined
       }
       set_trip_target: {
         Args: { p_target: string; p_trip_id: string }

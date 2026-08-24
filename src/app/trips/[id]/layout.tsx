@@ -35,6 +35,9 @@ export default async function TripLayout({
                 {pluralize(votingFamilies.length, 'family', 'families')} ·{' '}
                 {pluralize(headcount, 'person', 'people')}
               </p>
+              {trip.description ? (
+                <p className="mt-1 max-w-xl text-sm text-text">{trip.description}</p>
+              ) : null}
             </div>
             {finalized ? (
               <Badge tone="good">Locked in</Badge>

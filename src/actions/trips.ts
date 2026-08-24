@@ -15,6 +15,7 @@ const createSchema = z.object({
     .min(1, 'What should the group call your family?')
     .max(60),
   targetDays: z.coerce.number().int().min(1).max(60).default(7),
+  description: z.string().trim().max(500).optional(),
 });
 
 /**
@@ -30,6 +31,7 @@ export async function createTrip(_prev: ActionState, formData: FormData): Promis
     name: formData.get('name'),
     familyName: formData.get('familyName'),
     targetDays: formData.get('targetDays') ?? 7,
+    description: formData.get('description') ?? '',
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -38,6 +40,7 @@ export async function createTrip(_prev: ActionState, formData: FormData): Promis
     p_name: parsed.data.name,
     p_family_name: parsed.data.familyName,
     p_target_days: parsed.data.targetDays,
+    p_description: parsed.data.description || undefined,
   });
 
   if (error) return { error: error.message };
