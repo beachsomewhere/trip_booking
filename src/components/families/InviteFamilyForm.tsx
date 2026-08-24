@@ -11,7 +11,8 @@ import { Button, Field, FormError, Input } from '@/components/ui';
  * families' approval before an email goes anywhere.
  */
 export interface KnownFamily {
-  householdId: string;
+  /** Null when they were invited but never joined — still worth offering. */
+  householdId: string | null;
   name: string;
   emails: string[];
 }
@@ -54,11 +55,11 @@ export function InviteFamilyForm({
           group's approval gate like any other addition. */}
       {known.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-text">You&apos;ve travelled with</p>
+          <p className="text-sm font-medium text-text">You&apos;ve invited before</p>
           <div className="flex flex-wrap gap-2">
             {known.map((k) => (
               <button
-                key={k.householdId}
+                key={k.householdId ?? k.emails.join(',')}
                 type="button"
                 onClick={() => {
                   setName(k.name);
@@ -68,14 +69,26 @@ export function InviteFamilyForm({
               >
                 <span className="block font-medium text-text">{k.name}</span>
                 <span className="block text-xs text-muted">{k.emails.join(', ')}</span>
+                <span className="block text-xs text-muted">
+                  {k.householdId
+                    ? 'Family saved — they only confirm who\u2019s coming'
+                    : 'Never joined a trip yet'}
+                </span>
               </button>
             ))}
           </div>
           <p className="text-xs text-muted">
-            They already have their family saved, so they&apos;ll only confirm who&apos;s coming.
+            Picking one fills in the fields below — check the addresses are still right.
           </p>
         </div>
-      ) : null}
+      ) : (
+        /* The picker vanishing entirely reads as "this feature does not exist",
+           which is how it was first reported. Say why it is empty instead. */
+        <p className="text-xs text-muted">
+          Families you&apos;ve shared a trip with will appear here to pick from, so you only type
+          their details once.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Family name" hint="However the group refers to them — shown as typed.">
