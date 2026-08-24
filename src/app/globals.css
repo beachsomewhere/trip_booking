@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Lock the Trip — design tokens.
+   Warm sand + deep teal: reads as "travel" without being a stock-photo cliché.
+   Light is the primary design; dark is a faithful inversion, not an afterthought.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --color-sand-50:  #fbf9f5;
+  --color-sand-100: #f4efe6;
+  --color-sand-200: #e7dece;
+  --color-sand-300: #d4c5ad;
+
+  --color-ink-500: #6b6558;
+  --color-ink-700: #3d3a33;
+  --color-ink-900: #1c1a17;
+
+  --color-teal-50:  #eef7f6;
+  --color-teal-100: #d3ebe8;
+  --color-teal-500: #157f76;
+  --color-teal-600: #0f6a62;
+  --color-teal-700: #0b514b;
+
+  --color-clay-100: #fbeae4;
+  --color-clay-500: #c4592f;
+  --color-clay-600: #a5471f;
+
+  --color-moss-100: #e6f0e2;
+  --color-moss-600: #4a7c3f;
+}
+
+:root {
+  --bg: var(--color-sand-50);
+  --surface: #ffffff;
+  --surface-2: var(--color-sand-100);
+  --border: var(--color-sand-200);
+  --text: var(--color-ink-900);
+  --text-muted: var(--color-ink-500);
+  --accent: var(--color-teal-600);
+  --accent-soft: var(--color-teal-50);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14130f;
+    --surface: #1e1c17;
+    --surface-2: #272419;
+    --border: #38342a;
+    --text: #f2ede3;
+    --text-muted: #a89f8c;
+    --accent: #2aa79b;
+    --accent-soft: #17302d;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-edge: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Focus ring that survives both themes. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
