@@ -6,10 +6,14 @@
 -- that already has some of it, rather than tracked as versioned migrations.
 --
 -- Apply locally:   supabase db reset      (runs this + seed.sql)
--- Apply remotely:  psql "$DATABASE_URL" -f supabase/schema.sql
+-- Apply remotely:  supabase db push
+--
+-- Deliberately depends on no extensions. On Supabase, pgcrypto lives in the
+-- `extensions` schema; `db reset` happens to run with a search_path that finds
+-- it, while `db push` does not — so a bare gen_random_bytes() call applies
+-- cleanly on a local stack and then fails against a hosted project. Everything
+-- here uses gen_random_uuid(), which is core Postgres 13+.
 -- ===========================================================================
-
-create extension if not exists pgcrypto;
 
 -- ---------------------------------------------------------------------------
 -- Enums
@@ -133,7 +137,11 @@ create table if not exists invitations (
   trip_id             uuid not null references trips(id) on delete cascade,
   family_id           uuid not null references families(id) on delete cascade,
   email               text not null,
-  token               text not null unique default encode(gen_random_bytes(24), 'hex'),
+  -- 256 bits of randomness from two UUIDs. The token IS the credential for
+  -- redeeming an invite, so it must not be guessable.
+  token               text not null unique
+                        default (replace(gen_random_uuid()::text, '-', '')
+                              || replace(gen_random_uuid()::text, '-', '')),
   sent_at             timestamptz,
   accepted_at         timestamptz,
   accepted_by_user_id uuid references auth.users(id) on delete set null,
