@@ -1000,6 +1000,7 @@ export type Database = {
         Args: { p_family_name: string; p_name: string; p_target_days?: number }
         Returns: string
       }
+      delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
       invite_family: {
         Args: { p_emails: string[]; p_name: string; p_trip_id: string }
         Returns: string

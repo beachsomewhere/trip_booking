@@ -130,6 +130,8 @@ export interface PhaseProgress {
   responded: number;
   total: number;
   waitingOn: MinimalFamily[];
+  /** The other side of `waitingOn` — who has actually acted this phase. */
+  respondedFamilies: MinimalFamily[];
   everyoneIn: boolean;
 }
 
@@ -141,10 +143,12 @@ export function phaseProgress(
   const voting = votingFamilies(families);
   const responded = respondedFamilyIds(proposals, votes);
   const waitingOn = voting.filter((f) => !responded.has(f.id));
+  const respondedFamilies = voting.filter((f) => responded.has(f.id));
   return {
-    responded: voting.length - waitingOn.length,
+    responded: respondedFamilies.length,
     total: voting.length,
     waitingOn,
+    respondedFamilies,
     everyoneIn: voting.length > 0 && waitingOn.length === 0,
   };
 }

@@ -38,10 +38,13 @@ to Supabase. Run `supabase start`, `supabase db reset`, and click the flow. Mail
 
 ## Schema changes
 
-`supabase/migrations/00000000000000_trip_booker_schema.sql` is the single source of truth and is written
-idempotently (`if not exists`, `drop ... if exists`, `duplicate_object` guards) because it is re-applied
-rather than tracked as incremental migrations. If you change a column's nullability or type, add an
-explicit `alter table` next to the `create table` so existing databases pick it up too.
+**Write a new timestamped migration. Do not edit the base file.**
+`supabase db push` records applied migrations by filename, so editing
+`00000000000000_trip_booker_schema.sql` changes local resets and does nothing to production. That file
+was the single source of truth only until the hosted project existed; it is now history.
+
+The base file is still written idempotently (`if not exists`, `drop ... if exists`, `duplicate_object`
+guards), and new migrations should be too — they get re-run on every local `db reset`.
 
 After any schema change:
 
@@ -52,9 +55,16 @@ supabase gen types typescript --local > src/types/db.ts
 
 Do not hand-edit `src/types/db.ts`.
 
+## Phases
+
+The flow is `invites → dates → destination → lodging → finalized`. An `anchor` step (pick a point and a
+radius) was removed as busywork; its enum value and tables still exist because dropping an enum value
+means rewriting every dependent column, so `normalizePhase()` in `src/lib/phases.ts` maps it forward.
+Never reintroduce a phase without adding it to `PHASES`.
+
 ## Adding another voting phase
 
-The four voting phases share one implementation. To add a fifth:
+The voting phases share one implementation. To add another:
 
 1. `<name>_proposals` + `<name>_votes` tables, matching the shape of the existing pairs (including the
    denormalized `trip_id` on the vote table — the RLS policies rely on it).

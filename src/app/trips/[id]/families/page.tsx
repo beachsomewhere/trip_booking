@@ -3,6 +3,7 @@ import { FamilyProposalCard, type ProposalView } from '@/components/families/Fam
 import { InviteFamilyForm } from '@/components/families/InviteFamilyForm';
 import { AddEmailForm, ResendInvitesButton, StatusButton } from '@/components/families/FamilyControls';
 import { AdvanceButton } from '@/components/AdvanceButton';
+import { DeleteTripButton } from '@/components/DeleteTripButton';
 import { CopyLink } from '@/components/CopyLink';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
@@ -240,6 +241,12 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
             </AdvanceButton>
           </div>
         </Card>
+      ) : null}
+
+      {ctx.isOrganizer ? (
+        <section className="border-t border-edge pt-6">
+          <DeleteTripButton tripId={id} tripName={ctx.trip.name} />
+        </section>
       ) : null}
     </div>
   );

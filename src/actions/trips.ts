@@ -59,6 +59,22 @@ export async function advancePhase(tripId: string, to: TripPhase) {
   redirect(phaseHref(tripId, to));
 }
 
+/**
+ * Deletes a trip outright. Organizer only, enforced in the RPC.
+ *
+ * Everything cascades from trips.id, so this really removes the families,
+ * proposals, votes and shortlists too — there is no archived copy to restore
+ * from. The UI asks for the trip's name before calling it.
+ */
+export async function deleteTrip(tripId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('delete_trip', { p_trip_id: tripId });
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/trips');
+  redirect('/trips');
+}
+
 export async function setTripTarget(tripId: string, target: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc('set_trip_target', {

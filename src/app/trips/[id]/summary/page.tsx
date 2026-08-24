@@ -92,18 +92,6 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
           )}
         </Row>
 
-        <Row label="Area">
-          {ctx.trip.anchor_name ? (
-            <>
-              {ctx.trip.anchor_name}
-              <span className="ml-2 text-sm text-muted">
-                within {ctx.trip.anchor_radius_mi} miles
-              </span>
-            </>
-          ) : (
-            <Pending href={`/trips/${id}/anchor`}>Not set yet</Pending>
-          )}
-        </Row>
 
         <Row label="Who">
           {ctx.votingFamilies.map((f) => f.name).join(', ')}

@@ -60,11 +60,37 @@ export function PhaseProgressPanel({
         )}
       </div>
 
+      {/* Per-family breakdown. A sentence naming the stragglers is fine with two
+          families and unreadable with six — this stays legible either way, and
+          answers "who exactly are we waiting on" at a glance. */}
+      <ul className="space-y-1 border-t border-edge pt-3">
+        {progress.waitingOn
+          .map((f) => ({ ...f, done: false }))
+          .concat(progress.respondedFamilies.map((f) => ({ ...f, done: true })))
+          .sort((a, b) => Number(a.done) - Number(b.done) || a.name.localeCompare(b.name))
+          .map((f) => (
+            <li key={f.id} className="flex items-center justify-between gap-2 text-sm">
+              <span className={f.done ? 'text-muted' : 'text-text'}>
+                {f.name}
+                {f.id === myFamilyId ? <span className="text-muted"> (you)</span> : null}
+              </span>
+              <span className={f.done ? 'text-moss-600' : 'text-muted'}>
+                {f.done ? 'weighed in' : 'not yet'}
+              </span>
+            </li>
+          ))}
+
+        {awaitingInvite.map((f) => (
+          <li key={f.id} className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-muted">{f.name}</span>
+            <span className="text-clay-600">invite not accepted</span>
+          </li>
+        ))}
+      </ul>
+
       {awaitingInvite.length > 0 ? (
-        <p className="text-sm text-muted">
-          {listFamilies(awaitingInvite.map((f) => f.name))}{' '}
-          {awaitingInvite.length === 1 ? "hasn't" : "haven't"} accepted the invite yet, so{' '}
-          {awaitingInvite.length === 1 ? 'they are' : 'they are'} not counted above.
+        <p className="text-xs text-muted">
+          Families who haven&apos;t accepted can&apos;t vote, so they aren&apos;t counted above.
         </p>
       ) : null}
 

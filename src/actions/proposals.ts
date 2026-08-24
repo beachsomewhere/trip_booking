@@ -11,11 +11,11 @@ import { phaseHref, type TripPhase } from '@/lib/phases';
 /**
  * Shared machinery for the three "a family proposes, the others vote" phases.
  *
- * Dates, destination, and anchor differ only in what a proposal carries — the
- * voting, withdrawal, sign-off, and resolution are identical, so they live here
- * once instead of three times.
+ * Dates and destination differ only in what a proposal carries — the voting,
+ * withdrawal, sign-off, and resolution are identical, so they live here once
+ * instead of twice.
  */
-export type ProposalKind = 'dates' | 'destination' | 'anchor';
+export type ProposalKind = 'dates' | 'destination';
 
 const TABLES = {
   dates: { proposals: 'date_proposals', votes: 'date_votes', resolve: 'resolve_dates' },
@@ -24,7 +24,6 @@ const TABLES = {
     votes: 'destination_votes',
     resolve: 'resolve_destination',
   },
-  anchor: { proposals: 'anchor_proposals', votes: 'anchor_votes', resolve: 'resolve_anchor' },
 } as const;
 
 /**
@@ -90,8 +89,7 @@ export async function withdrawProposal(kind: ProposalKind, tripId: string, propo
 /** Which phase each resolve RPC leaves the trip in — mirrors the SQL. */
 const RESOLVES_INTO: Record<ProposalKind, TripPhase> = {
   dates: 'destination',
-  destination: 'anchor',
-  anchor: 'lodging',
+  destination: 'lodging',
 };
 
 /**
@@ -190,45 +188,6 @@ export async function proposeDestination(
     lat: parsed.data.lat ?? null,
     lng: parsed.data.lng ?? null,
     photo_url: parsed.data.photoUrl || null,
-    note: parsed.data.note || null,
-  });
-  if (error) return { error: error.message };
-
-  revalidateTrip(tripId);
-  return { ok: 'Added to the list.' };
-}
-
-// Coordinates stay optional so the area step works without Google Places; the
-// lodging search degrades to pasted links rather than the phase being blocked.
-const anchorSchema = placeSchema.extend({
-  radiusMi: z.coerce.number().min(0.5).max(31),
-});
-
-export async function proposeAnchor(
-  tripId: string,
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const parsed = anchorSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0].message || 'Pick a spot on the map first.' };
-  }
-
-  const user = await getUser();
-  if (!user) return { error: 'Not signed in.' };
-  const familyId = await requireMyFamily(tripId);
-  const supabase = await createClient();
-
-  const { error } = await supabase.from('anchor_proposals').insert({
-    trip_id: tripId,
-    family_id: familyId,
-    created_by_user_id: user.id,
-    google_place_id: parsed.data.placeId || null,
-    name: parsed.data.name,
-    formatted_address: parsed.data.address || null,
-    lat: parsed.data.lat ?? null,
-    lng: parsed.data.lng ?? null,
-    radius_mi: parsed.data.radiusMi,
     note: parsed.data.note || null,
   });
   if (error) return { error: error.message };

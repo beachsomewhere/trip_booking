@@ -23,22 +23,31 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: trip } = await supabase
     .from('trips')
-    .select('anchor_lat, anchor_lng, anchor_radius_mi, housing_types')
+    .select(
+      'anchor_lat, anchor_lng, anchor_radius_mi, destination_lat, destination_lng, housing_types',
+    )
     .eq('id', tripId)
     .maybeSingle();
 
-  // An area agreed without a map pin (possible when Places is unconfigured) is
-  // a normal state, not an error — the group just adds links by hand instead.
-  if (trip?.anchor_lat == null || trip?.anchor_lng == null) {
+  // The `anchor_*` columns are what the retired area step used to set. They are
+  // now seeded from the destination, but fall back explicitly so a trip that
+  // predates that, or one whose destination was typed as free text, still
+  // behaves sensibly.
+  const lat = trip?.anchor_lat ?? trip?.destination_lat ?? null;
+  const lng = trip?.anchor_lng ?? trip?.destination_lng ?? null;
+
+  // A destination with no map pin (possible when Places is unconfigured) is a
+  // normal state, not an error — the group just adds links by hand instead.
+  if (lat == null || lng == null) {
     return NextResponse.json({ configured: true, places: [], noCoordinates: true });
   }
 
   try {
     const places = await searchLodging({
-      lat: trip.anchor_lat,
-      lng: trip.anchor_lng,
-      radiusMi: Number(trip.anchor_radius_mi ?? 5),
-      housingTypes: trip.housing_types ?? undefined,
+      lat,
+      lng,
+      radiusMi: Number(trip?.anchor_radius_mi ?? 15),
+      housingTypes: trip?.housing_types ?? undefined,
     });
 
     return NextResponse.json({

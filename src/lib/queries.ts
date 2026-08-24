@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient, getUser } from '@/lib/supabase/server';
 import type { Database } from '@/types/db';
-import type { TripPhase } from '@/lib/phases';
+import { normalizePhase, type TripPhase } from '@/lib/phases';
 
 export type Trip = Database['public']['Tables']['trips']['Row'];
 export type Family = Database['public']['Tables']['families']['Row'];
@@ -66,7 +66,7 @@ export async function loadTripContext(tripId: string): Promise<TripContext> {
 
   return {
     trip,
-    phase: trip.phase as TripPhase,
+    phase: normalizePhase(trip.phase as TripPhase),
     families: roster,
     votingFamilies: voting,
     myFamily,

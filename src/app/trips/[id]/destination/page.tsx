@@ -114,7 +114,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
 
       {!done && ctx.myFamily?.status === 'active' ? (
         <Card>
-          <ProposePlaceForm tripId={id} mode="destination" />
+          <ProposePlaceForm tripId={id} />
         </Card>
       ) : null}
     </div>

@@ -2,14 +2,23 @@ import type { Database } from '@/types/db';
 
 export type TripPhase = Database['public']['Enums']['trip_phase'];
 
-export const PHASES: TripPhase[] = [
-  'invites',
-  'dates',
-  'destination',
-  'anchor',
-  'lodging',
-  'finalized',
-];
+/**
+ * The steps the app actually walks through.
+ *
+ * `anchor` (pick a point and a radius) was removed: by the time a group has
+ * agreed on a destination they are ready to look at places, and asking them to
+ * quantify a search radius was busywork. Where people want to stay is now
+ * expressed by the places they put forward in the lodging step.
+ *
+ * The enum value survives in the database — dropping one means rewriting every
+ * dependent column — so `normalizePhase` maps it forward for any trip that was
+ * mid-flight when this changed.
+ */
+export const PHASES: TripPhase[] = ['invites', 'dates', 'destination', 'lodging', 'finalized'];
+
+export function normalizePhase(phase: TripPhase): TripPhase {
+  return phase === 'anchor' ? 'lodging' : phase;
+}
 
 export const PHASE_META: Record<
   TripPhase,
@@ -33,11 +42,13 @@ export const PHASE_META: Record<
     blurb: 'Pick the destination — a resort, an island, a city.',
     segment: 'destination',
   },
+  // Retired. Kept so the record type stays exhaustive over the DB enum, and so
+  // an old link still resolves somewhere sensible.
   anchor: {
-    label: 'What area',
-    short: 'Area',
-    blurb: 'Narrow to a spot and a radius to search around.',
-    segment: 'anchor',
+    label: 'Where to stay',
+    short: 'Stay',
+    blurb: 'Shortlist places and pick the units.',
+    segment: 'lodging',
   },
   lodging: {
     label: 'Where to stay',
@@ -54,7 +65,7 @@ export const PHASE_META: Record<
 };
 
 export function phaseIndex(phase: TripPhase): number {
-  return PHASES.indexOf(phase);
+  return PHASES.indexOf(normalizePhase(phase));
 }
 
 export function nextPhase(phase: TripPhase): TripPhase {
@@ -67,5 +78,5 @@ export function isPhaseComplete(current: TripPhase, phase: TripPhase): boolean {
 }
 
 export function phaseHref(tripId: string, phase: TripPhase): string {
-  return `/trips/${tripId}/${PHASE_META[phase].segment}`;
+  return `/trips/${tripId}/${PHASE_META[normalizePhase(phase)].segment}`;
 }

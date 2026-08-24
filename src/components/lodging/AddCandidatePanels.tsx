@@ -77,7 +77,7 @@ export function LodgingSearchPanel({
     return (
       <EmptyState
         title="Place search isn't switched on"
-        body="Add a GOOGLE_MAPS_API_KEY and this fills with hotels and rentals inside your circle. Until then, paste links below — everything else works the same."
+        body="Add a GOOGLE_MAPS_API_KEY and this fills with hotels and rentals near your destination. Until then, paste links below — everything else works the same."
       />
     );
   }
@@ -85,8 +85,8 @@ export function LodgingSearchPanel({
   if (noCoordinates) {
     return (
       <EmptyState
-        title="No map pin for your search area"
-        body="The area you agreed on was entered as text, so there is nothing to search around. Paste links below instead — voting works exactly the same."
+        title="No map pin for your destination"
+        body="The destination was entered as text, so there is nothing to search around. Paste links below instead — voting works exactly the same."
       />
     );
   }
@@ -95,8 +95,8 @@ export function LodgingSearchPanel({
   if (places.length === 0) {
     return (
       <EmptyState
-        title="Nothing came back inside that circle"
-        body="Try a wider radius on the previous step, or paste links to places you already know."
+        title="Nothing came back near there"
+        body="Paste links to places you already know — those become the list everyone votes on."
       />
     );
   }

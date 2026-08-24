@@ -77,15 +77,14 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
         title="Where to stay"
         subtitle={
           prefsSettled
-            ? 'Shortlist up to five. Where families overlap is the answer.'
+            ? 'Add places anyone would stay, then shortlist your five. Where families overlap is the answer.'
             : 'First, what kind of place suits everyone.'
         }
       />
 
-      {ctx.trip.anchor_name ? (
+      {ctx.trip.destination_name ? (
         <p className="text-sm text-muted">
-          Within {ctx.trip.anchor_radius_mi} miles of {ctx.trip.anchor_name} ·{' '}
-          {pluralize(ctx.headcount, 'person', 'people')}
+          {ctx.trip.destination_name} · {pluralize(ctx.headcount, 'person', 'people')}
           {ctx.children > 0 ? ` (${ctx.children} under 18)` : ''}
         </p>
       ) : null}
