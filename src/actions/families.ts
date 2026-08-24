@@ -202,119 +202,65 @@ export async function resendInvites(tripId: string) {
 }
 
 /**
- * Replaces a family's attendee list. Ages are what make the lodging phase
- * meaningful — "sleeps 8" means something different with four toddlers.
+ * Records which household people are coming on this trip.
+ *
+ * Deliberately narrow: it selects from the household rather than editing it.
+ * Names, birth data and email addresses are entered once on /household — asking
+ * for them again on every trip was the retyping the household exists to remove.
+ *
+ * Attendee rows carry a snapshot of name and birth data rather than only a
+ * pointer, because other families read the headcount and giving every trip
+ * member access to every household's records would be a far wider grant.
  */
-export async function saveAttendees(
+export async function setTripAttendees(
   tripId: string,
   familyId: string,
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const names = formData.getAll('attendeeName').map((v) => String(v).trim());
-  const months = formData.getAll('birthMonth').map((v) => String(v).trim());
-  const years = formData.getAll('birthYear').map((v) => String(v).trim());
-  const personIds = formData.getAll('personId').map((v) => String(v).trim());
-  const emailLists = formData.getAll('personEmails').map((v) => String(v));
-  const coming = formData.getAll('coming').map((v) => String(v) === '1');
-
-  const num = (v: string) => (v === '' ? null : Number(v));
-
-  const people = names
-    .map((name, i) => ({
-      name,
-      birth_month: num(months[i] ?? ''),
-      birth_year: num(years[i] ?? ''),
-      person_id: personIds[i] || null,
-      emails: [
-        ...new Set(
-          (emailLists[i] ?? '')
-            .split(/[\s,;]+/)
-            .map((e) => e.trim().toLowerCase())
-            .filter(Boolean),
-        ),
-      ],
-      coming: coming[i] ?? true,
-    }))
-    .filter((p) => p.name.length > 0);
+  const personIds = formData.getAll('personId').map((v) => String(v));
 
   const supabase = await createClient();
 
-  // The household is the durable record: it keeps everyone, including people
-  // sitting this trip out, so the next trip still knows about them.
   const { data: householdId, error: hhError } = await supabase.rpc('ensure_household');
   if (hhError) return { error: hhError.message };
 
-  const saved: { person: (typeof people)[number]; id: string | null }[] = [];
+  const { data: people, error: peopleError } = await supabase
+    .from('household_people')
+    .select('id, name, birth_year, birth_month')
+    .eq('household_id', householdId);
+  if (peopleError) return { error: peopleError.message };
 
-  for (const person of people) {
-    const payload = {
-      household_id: householdId,
-      name: person.name,
-      birth_month: person.birth_month,
-      birth_year: person.birth_year,
-    };
+  // Only ever accept ids that belong to the caller's own household.
+  const chosen = (people ?? []).filter((p) => personIds.includes(p.id));
 
-    if (person.person_id) {
-      const { error } = await supabase
-        .from('household_people')
-        .update(payload)
-        .eq('id', person.person_id);
-      if (error) return { error: error.message };
-      saved.push({ person, id: person.person_id });
-    } else {
-      const { data, error } = await supabase
-        .from('household_people')
-        .insert(payload)
-        .select('id')
-        .single();
-      if (error) return { error: error.message };
-      saved.push({ person, id: data?.id ?? null });
-    }
-  }
-
-  // Addresses belong to people; replace them wholesale so a removal sticks.
-  for (const s2 of saved) {
-    if (!s2.id) continue;
-    await supabase.from('household_person_emails').delete().eq('person_id', s2.id);
-    if (s2.person.emails.length > 0) {
-      await supabase
-        .from('household_person_emails')
-        .insert(s2.person.emails.map((email) => ({ person_id: s2.id!, email })));
-    }
-  }
-
-  // Make sure this trip's family is attached to the household, so a future
-  // visit prefills from it, then pull everyone's addresses onto this trip.
   await supabase.from('families').update({ household_id: householdId }).eq('id', familyId);
-  await supabase.rpc('sync_household_emails', { p_family_id: familyId });
 
-  // Attendees are replaced wholesale — only the people marked as coming, with a
-  // snapshot of their birth data so other families can read the headcount
-  // without access to this household's records.
   const { error: delError } = await supabase
     .from('family_attendees')
     .delete()
     .eq('family_id', familyId);
   if (delError) return { error: delError.message };
 
-  const attending = saved.filter((s) => s.person.coming);
-  if (attending.length > 0) {
+  if (chosen.length > 0) {
     const { error } = await supabase.from('family_attendees').insert(
-      attending.map((s) => ({
+      chosen.map((p) => ({
         family_id: familyId,
-        person_id: s.id,
-        name: s.person.name,
-        birth_month: s.person.birth_month,
-        birth_year: s.person.birth_year,
+        person_id: p.id,
+        name: p.name,
+        birth_month: p.birth_month,
+        birth_year: p.birth_year,
       })),
     );
     if (error) return { error: error.message };
   }
 
+  // Everyone with an address on the household can follow this trip.
+  await supabase.rpc('sync_household_emails', { p_family_id: familyId });
+
   revalidatePath(`/trips/${tripId}`, 'layout');
   return {
-    ok: `Saved. We'll remember ${people.length === 1 ? 'them' : 'everyone'} for your next trip.`,
+    ok: chosen.length === 0 ? 'Nobody marked as coming yet.' : 'Saved.',
   };
 }
 
@@ -365,36 +311,15 @@ export async function loadHouseholdPeople(familyId: string) {
   return (people ?? []).map((p) => ({
     personId: p.id,
     name: p.name,
-    birthYear: p.birth_year == null ? '' : String(p.birth_year),
-    birthMonth: p.birth_month == null ? '' : String(p.birth_month),
-    emails: (p.household_person_emails ?? []).map((e) => e.email).join(', '),
+    birthYear: p.birth_year,
+    birthMonth: p.birth_month,
+    emails: (p.household_person_emails ?? []).map((e) => e.email),
     // Match on name too, so attendees added before households existed still
     // show as coming rather than appearing to have been dropped.
     coming: attendingIds.has(p.id) || attendingNames.has(p.name.toLowerCase()),
   }));
 }
 
-/** Adds a second email (a spouse) to your own family. */
-export async function addFamilyEmail(
-  tripId: string,
-  familyId: string,
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const email = z.string().trim().toLowerCase().email().safeParse(formData.get('email'));
-  if (!email.success) return { error: 'That does not look like an email address.' };
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('family_members')
-    .insert({ family_id: familyId, email: email.data });
-  if (error) {
-    return { error: error.code === '23505' ? 'That email is already on your family.' : error.message };
-  }
-
-  revalidatePath(`/trips/${tripId}/families`);
-  return { ok: `${email.data} can now sign in with their own email.` };
-}
 
 /**
  * Redeems an invite token. Resolving the token needs the service-role client:

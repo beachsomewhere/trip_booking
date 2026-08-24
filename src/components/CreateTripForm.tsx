@@ -5,7 +5,7 @@ import { createTrip } from '@/actions/trips';
 import type { ActionState } from '@/actions/auth';
 import { Button, Field, FormError, Input } from '@/components/ui';
 
-export function CreateTripForm() {
+export function CreateTripForm({ familyName = '' }: { familyName?: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(createTrip, {});
 
   return (
@@ -15,9 +15,19 @@ export function CreateTripForm() {
       </Field>
       <Field
         label="Your family name"
-        hint="Exactly how the group should see you — “The Barnes”, “Mei & Jon”."
+        hint={
+          familyName
+            ? 'This is how you appear on every trip. Changing it here changes it everywhere.'
+            : 'Exactly how the group should see you — “The Barnes”, “Mei & Jon”. You can change it later.'
+        }
       >
-        <Input name="familyName" required maxLength={60} placeholder="The Barnes" />
+        <Input
+          name="familyName"
+          required
+          maxLength={60}
+          placeholder="The Barnes"
+          defaultValue={familyName}
+        />
       </Field>
       <Field
         label="Decide within"

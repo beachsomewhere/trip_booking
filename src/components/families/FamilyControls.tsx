@@ -1,9 +1,8 @@
 'use client';
 
-import { useActionState, useState, useTransition } from 'react';
-import { addFamilyEmail, leaveTrip, resendInvites, setFamilyStatus } from '@/actions/families';
-import type { ActionState } from '@/actions/auth';
-import { Button, FormError, Input } from '@/components/ui';
+import { useState, useTransition } from 'react';
+import { leaveTrip, resendInvites, setFamilyStatus } from '@/actions/families';
+import { Button } from '@/components/ui';
 import type { Database } from '@/types/db';
 
 type FamilyStatus = Database['public']['Enums']['family_status'];
@@ -111,24 +110,3 @@ export function ResendInvitesButton({ tripId }: { tripId: string }) {
   );
 }
 
-export function AddEmailForm({ tripId, familyId }: { tripId: string; familyId: string }) {
-  const [state, action, pending] = useActionState<ActionState, FormData>(
-    addFamilyEmail.bind(null, tripId, familyId),
-    {},
-  );
-  return (
-    <form action={action} className="space-y-2">
-      <div className="flex gap-2">
-        {/* Width on the wrapper, not the input — see AttendeeEditor. */}
-        <div className="flex-1">
-          <Input name="email" type="email" required placeholder="spouse@example.com" />
-        </div>
-        <Button type="submit" variant="secondary" disabled={pending}>
-          Add
-        </Button>
-      </div>
-      {state.ok ? <p className="text-xs text-moss-600">{state.ok}</p> : null}
-      <FormError message={state.error} />
-    </form>
-  );
-}

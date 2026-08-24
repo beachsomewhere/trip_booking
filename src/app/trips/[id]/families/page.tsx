@@ -1,9 +1,8 @@
-import { AttendeeEditor } from '@/components/families/AttendeeEditor';
-import { loadHouseholdPeople, loadKnownFamilies, saveAttendees } from '@/actions/families';
+import { AttendeePicker } from '@/components/families/AttendeePicker';
+import { loadHouseholdPeople, loadKnownFamilies } from '@/actions/families';
 import { FamilyProposalCard, type ProposalView } from '@/components/families/FamilyProposalCard';
 import { InviteFamilyForm } from '@/components/families/InviteFamilyForm';
 import {
-  AddEmailForm,
   LeaveTripButton,
   ResendInvitesButton,
   StatusButton,
@@ -146,23 +145,12 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
                     <p className="mb-2 text-sm font-medium text-text">
                       Who&apos;s coming from your family
                     </p>
-                    <AttendeeEditor
-                      save={saveAttendees.bind(null, id, family.id)}
+                    <AttendeePicker
+                      tripId={id}
+                      familyId={family.id}
                       tripStart={ctx.trip.agreed_start_date}
-                      initial={householdPeople.map((p, i) => ({
-                        key: `hh${i}`,
-                        personId: p.personId,
-                        name: p.name,
-                        birthYear: p.birthYear,
-                        birthMonth: p.birthMonth,
-                        coming: p.coming,
-                        emails: p.emails ?? '',
-                      }))}
+                      people={householdPeople}
                     />
-                  </div>
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-text">Add another email</p>
-                    <AddEmailForm tripId={id} familyId={family.id} />
                   </div>
                 </div>
               ) : null}
