@@ -419,6 +419,7 @@ export type Database = {
           id: string
           name: string | null
           person_id: string | null
+          trip_id: string | null
         }
         Insert: {
           age?: number | null
@@ -429,6 +430,7 @@ export type Database = {
           id?: string
           name?: string | null
           person_id?: string | null
+          trip_id?: string | null
         }
         Update: {
           age?: number | null
@@ -439,6 +441,7 @@ export type Database = {
           id?: string
           name?: string | null
           person_id?: string | null
+          trip_id?: string | null
         }
         Relationships: [
           {
@@ -455,6 +458,13 @@ export type Database = {
             referencedRelation: "household_people"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "family_attendees_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
         ]
       }
       family_members: {
@@ -464,6 +474,7 @@ export type Database = {
           family_id: string
           id: string
           is_primary: boolean
+          trip_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -472,6 +483,7 @@ export type Database = {
           family_id: string
           id?: string
           is_primary?: boolean
+          trip_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -480,6 +492,7 @@ export type Database = {
           family_id?: string
           id?: string
           is_primary?: boolean
+          trip_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -488,6 +501,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_members_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]

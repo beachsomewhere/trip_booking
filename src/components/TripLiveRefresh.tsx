@@ -20,6 +20,10 @@ import { createClient } from '@/lib/supabase/client';
 /** Tables whose changes alter what a trip screen shows. */
 const WATCHED = [
   'families',
+  // Who is coming from each family. Missing here meant one spouse un-ticking a
+  // child stayed invisible to everyone else until they reloaded.
+  'family_attendees',
+  'family_members',
   'invitations',
   'phase_signoffs',
   'date_proposals',

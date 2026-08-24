@@ -35,9 +35,25 @@ export function AttendeePicker({
   people: PickablePerson[];
   tripStart: string | null;
 }) {
-  const [selected, setSelected] = useState<string[]>(() =>
-    people.filter((p) => p.coming).map((p) => p.personId),
-  );
+  // What the server currently says, as a stable string to compare against.
+  const serverIds = people
+    .filter((p) => p.coming)
+    .map((p) => p.personId)
+    .sort();
+  const serverKey = serverIds.join(',');
+
+  const [selected, setSelected] = useState<string[]>(serverIds);
+  const [seenServer, setSeenServer] = useState(serverKey);
+
+  // A live refresh replaces the props, but state initialised once ignores them,
+  // so a spouse's change arrived and changed nothing on screen. Take the new
+  // answer — unless this person has ticks of their own they haven't saved, in
+  // which case theirs win and they can still press Save.
+  if (serverKey !== seenServer) {
+    const mine = [...selected].sort().join(',');
+    setSeenServer(serverKey);
+    if (mine === seenServer) setSelected(serverIds);
+  }
 
   const [state, action, pending] = useActionState<ActionState, FormData>(
     setTripAttendees.bind(null, tripId, familyId),
