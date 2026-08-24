@@ -70,7 +70,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
             ? 'Locked in.'
             : items.length === 0
               ? 'Post the weeks that work for your family. Everyone else does the same.'
-              : 'Say which of these work for you. Suggest something else only if none do.'
+              : 'Say which work for you. “Not ideal” still counts as a yes — it just tells the group it isn’t your first choice.'
         }
       />
 

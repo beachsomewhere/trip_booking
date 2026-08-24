@@ -63,7 +63,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
         subtitle={
           done
             ? 'Settled.'
-            : 'Somebody suggests a place, everyone else says yes or no. That is the whole step.'
+            : 'Somebody suggests a place, everyone else weighs in. “Not ideal” still counts as a yes — it just says it isn’t your first choice.'
         }
       />
 

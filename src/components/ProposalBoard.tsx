@@ -24,10 +24,19 @@ export interface BoardItem {
   isLeader: boolean;
 }
 
-const CHOICES: { value: VoteChoice; label: string }[] = [
-  { value: 'yes', label: 'Works' },
-  { value: 'maybe', label: 'Could work' },
-  { value: 'no', label: "Doesn't work" },
+/**
+ * Three options, not two, and the middle one is the point.
+ *
+ * Without it people either fake enthusiasm for something they merely tolerate,
+ * or vote it down over a mild preference — and the tally stops meaning
+ * anything. "Could work" was too close to "Works" to carry that; "Not ideal"
+ * says plainly that it is a yes with a reservation, which is what makes a
+ * genuine blocker stand out from a grumble.
+ */
+const CHOICES: { value: VoteChoice; label: string; hint: string }[] = [
+  { value: 'yes', label: 'Works', hint: 'Suits us' },
+  { value: 'maybe', label: 'Not ideal', hint: "We'd come, but it's not our first choice" },
+  { value: 'no', label: "Doesn't work", hint: "We can't make it" },
 ];
 
 /**
@@ -109,11 +118,11 @@ function ProposalCard({
           to "1 can't", because only the yes column counted as a vote. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
         {item.yes > 0 ? (
-          <span className="text-moss-600">{listFamilies(item.yesFamilyNames)} in</span>
+          <span className="text-moss-600">In — {listFamilies(item.yesFamilyNames)}</span>
         ) : null}
-        {item.maybe > 0 ? <span>{listFamilies(item.maybeFamilyNames)} maybe</span> : null}
+        {item.maybe > 0 ? <span>Not ideal — {listFamilies(item.maybeFamilyNames)}</span> : null}
         {item.no > 0 ? (
-          <span className="text-clay-600">{listFamilies(item.noFamilyNames)} can&apos;t</span>
+          <span className="text-clay-600">Can&apos;t — {listFamilies(item.noFamilyNames)}</span>
         ) : null}
         {item.yes === 0 && item.maybe === 0 && item.no === 0 ? <span>No votes yet</span> : null}
       </div>
@@ -126,6 +135,7 @@ function ProposalCard({
               variant={item.myVote === c.value ? 'primary' : 'secondary'}
               disabled={pending}
               onClick={() => vote(c.value)}
+              title={c.hint}
             >
               {c.label}
             </Button>
