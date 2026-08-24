@@ -37,7 +37,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           <>
             <PageTitle
               title={`You're invited to ${invite.trips?.name ?? 'a trip'}`}
-              subtitle={`Joining as the ${invite.families?.name ?? 'family'}. You'll help pick dates, then where to go, then where to stay.`}
+              subtitle={`Joining as ${invite.families?.name ?? 'a family'}. You'll help pick dates, then where to go, then where to stay.`}
             />
 
             {user ? (

@@ -91,15 +91,15 @@ export function ProposePlaceForm({
 
       {missingCoords ? (
         <p className="rounded-lg bg-clay-100 px-3 py-2 text-sm text-clay-600">
-          This spot has no coordinates, so we can&apos;t search for places around it. Pick a result
-          from the dropdown rather than free text.
+          No map pin for this one, so the automatic search for nearby places won&apos;t run. The
+          group can still agree on it and paste links by hand.
         </p>
       ) : null}
 
       <FormError message={state.error} />
       {state.ok ? <p className="text-sm text-moss-600">{state.ok}</p> : null}
 
-      <Button type="submit" disabled={pending || !place || missingCoords}>
+      <Button type="submit" disabled={pending || !place}>
         {pending ? 'Adding…' : place ? `Suggest ${place.name}` : 'Pick a place first'}
       </Button>
     </form>

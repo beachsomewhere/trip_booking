@@ -142,7 +142,8 @@ function ProposalCard({
             {resolveLabel}
           </Button>
         ) : null}
-        {item.isMine ? (
+        {/* Withdrawing is only meaningful while the step is still open. */}
+        {item.isMine && canVote ? (
           <Button
             variant="ghost"
             disabled={pending}

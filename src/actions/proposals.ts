@@ -181,9 +181,9 @@ export async function proposeDestination(
   return { ok: 'Added to the list.' };
 }
 
+// Coordinates stay optional so the area step works without Google Places; the
+// lodging search degrades to pasted links rather than the phase being blocked.
 const anchorSchema = placeSchema.extend({
-  lat: z.coerce.number(),
-  lng: z.coerce.number(),
   radiusMi: z.coerce.number().min(0.5).max(31),
 });
 
@@ -209,8 +209,8 @@ export async function proposeAnchor(
     google_place_id: parsed.data.placeId || null,
     name: parsed.data.name,
     formatted_address: parsed.data.address || null,
-    lat: parsed.data.lat,
-    lng: parsed.data.lng,
+    lat: parsed.data.lat ?? null,
+    lng: parsed.data.lng ?? null,
     radius_mi: parsed.data.radiusMi,
     note: parsed.data.note || null,
   });

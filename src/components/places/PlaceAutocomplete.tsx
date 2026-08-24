@@ -48,11 +48,13 @@ export function PlaceAutocomplete({
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  // Suggestions are only meaningful for a query long enough to have produced
+  // them; deriving that rather than clearing state in the effect avoids a
+  // cascading render on every keystroke.
+  const visible = query.trim().length < 2 ? [] : suggestions;
+
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setSuggestions([]);
-      return;
-    }
+    if (query.trim().length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -146,15 +148,17 @@ export function PlaceAutocomplete({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onFocus={() => {
+            if (visible.length > 0) setOpen(true);
+          }}
           placeholder={placeholder}
           autoComplete="off"
         />
       </Field>
 
-      {open && suggestions.length > 0 ? (
+      {open && visible.length > 0 ? (
         <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-edge bg-surface shadow-lg">
-          {suggestions.map((s) => (
+          {visible.map((s) => (
             <li key={s.placeId}>
               <button
                 type="button"

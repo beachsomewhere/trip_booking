@@ -253,8 +253,11 @@ create table if not exists anchor_proposals (
   google_place_id    text,
   name               text not null,
   formatted_address  text,
-  lat                double precision not null,
-  lng                double precision not null,
+  -- Nullable on purpose: without a Google Places key a group can still name an
+  -- area and vote on it, they just do not get an automated lodging search.
+  -- Requiring coordinates here would make Places a hard dependency of the app.
+  lat                double precision,
+  lng                double precision,
   radius_mi          numeric(5,1) not null default 5 check (radius_mi > 0 and radius_mi <= 31),
   note               text,
   withdrawn_at       timestamptz,
@@ -262,6 +265,10 @@ create table if not exists anchor_proposals (
 );
 
 create index if not exists anchor_proposals_trip_idx on anchor_proposals(trip_id);
+
+-- Applies the nullability change to databases created before it.
+alter table anchor_proposals alter column lat drop not null;
+alter table anchor_proposals alter column lng drop not null;
 
 create table if not exists anchor_votes (
   proposal_id uuid not null references anchor_proposals(id) on delete cascade,
@@ -1054,10 +1061,16 @@ end $$;
 -- operation still denies it.
 -- ===========================================================================
 
-grant usage on schema public to anon, authenticated;
+grant usage on schema public to anon, authenticated, service_role;
 
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant select on all tables in schema public to anon;
 
+-- service_role bypasses RLS but still needs the grant. The only thing that uses
+-- it is resolving an invitation token, where the recipient is by definition not
+-- yet a member and RLS would therefore hide their own invitation from them.
+grant all on all tables in schema public to service_role;
+
 alter default privileges in schema public
   grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public grant all on tables to service_role;

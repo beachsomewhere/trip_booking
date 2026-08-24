@@ -27,11 +27,10 @@ export async function GET(request: NextRequest) {
     .eq('id', tripId)
     .maybeSingle();
 
-  if (!trip?.anchor_lat || !trip?.anchor_lng) {
-    return NextResponse.json(
-      { configured: true, places: [], error: 'This trip has no search area yet.' },
-      { status: 409 },
-    );
+  // An area agreed without a map pin (possible when Places is unconfigured) is
+  // a normal state, not an error — the group just adds links by hand instead.
+  if (trip?.anchor_lat == null || trip?.anchor_lng == null) {
+    return NextResponse.json({ configured: true, places: [], noCoordinates: true });
   }
 
   try {

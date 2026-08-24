@@ -75,7 +75,7 @@ export function FamilyProposalCard({
               Fine by us
             </Button>
             <Button variant="secondary" onClick={() => vote(false)} disabled={pending}>
-              We'd rather not
+              We&apos;d rather not
             </Button>
           </div>
         ) : (

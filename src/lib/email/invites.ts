@@ -23,7 +23,7 @@ function renderInvite({ tripName, fromFamily, token }: InviteEmail): string {
   </p>
   <h1 style="font-size:22px;margin:0 0 12px">You're invited to ${escapeHtml(tripName)}</h1>
   <p style="font-size:15px;line-height:1.55;color:#3d3a33;margin:0 0 20px">
-    The ${escapeHtml(fromFamily)} added your family. You'll pick dates first, then where to go,
+    ${escapeHtml(fromFamily)} added your family. You'll pick dates first, then where to go,
     then where to stay — a few taps each, one decision at a time.
   </p>
   <p style="margin:0 0 24px">

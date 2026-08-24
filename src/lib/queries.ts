@@ -79,6 +79,23 @@ export async function loadTripContext(tripId: string): Promise<TripContext> {
   };
 }
 
+/**
+ * Unwraps a Supabase list query, logging failures instead of silently yielding
+ * an empty array.
+ *
+ * A `?? []` on a failed query renders as "nothing here yet", which is
+ * indistinguishable from a genuinely empty table. That cost real debugging time
+ * once already (a PostgREST embed error surfaced as an empty trip list), so
+ * every list read goes through here.
+ */
+export function rows<T>(
+  label: string,
+  res: { data: T[] | null; error: { message: string } | null },
+): T[] {
+  if (res.error) console.error(`[query:${label}] ${res.error.message}`);
+  return res.data ?? [];
+}
+
 export function familyName(families: { id: string; name: string }[], id: string | null): string {
   if (!id) return 'Someone';
   return families.find((f) => f.id === id)?.name ?? 'Someone';

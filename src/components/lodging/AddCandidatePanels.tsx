@@ -43,6 +43,7 @@ export function LodgingSearchPanel({
 }) {
   const [places, setPlaces] = useState<FoundPlace[]>([]);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [noCoordinates, setNoCoordinates] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
@@ -57,6 +58,7 @@ export function LodgingSearchPanel({
         if (cancelled) return;
         setConfigured(json.configured ?? false);
         setPlaces(json.places ?? []);
+        setNoCoordinates(Boolean(json.noCoordinates));
         setError(json.error ?? null);
       } catch {
         if (!cancelled) setError('Could not reach the place search.');
@@ -76,6 +78,15 @@ export function LodgingSearchPanel({
       <EmptyState
         title="Place search isn't switched on"
         body="Add a GOOGLE_MAPS_API_KEY and this fills with hotels and rentals inside your circle. Until then, paste links below — everything else works the same."
+      />
+    );
+  }
+
+  if (noCoordinates) {
+    return (
+      <EmptyState
+        title="No map pin for your search area"
+        body="The area you agreed on was entered as text, so there is nothing to search around. Paste links below instead — voting works exactly the same."
       />
     );
   }

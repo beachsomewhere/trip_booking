@@ -6,7 +6,7 @@ import { AdvanceButton } from '@/components/AdvanceButton';
 import { CopyLink } from '@/components/CopyLink';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext } from '@/lib/queries';
+import { loadTripContext, rows } from '@/lib/queries';
 import { inviteUrl } from '@/lib/email/invites';
 import { pluralize } from '@/lib/format';
 
@@ -15,7 +15,7 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
   const ctx = await loadTripContext(id);
   const supabase = await createClient();
 
-  const [{ data: proposals }, { data: proposalVotes }, { data: invitations }] = await Promise.all([
+  const [proposalsRes, votesRes, invitationsRes] = await Promise.all([
     supabase
       .from('family_proposals')
       .select('*')
@@ -25,11 +25,15 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
     supabase.from('invitations').select('*').eq('trip_id', id).is('accepted_at', null),
   ]);
 
+  const proposals = rows('family_proposals', proposalsRes);
+  const proposalVotes = rows('family_proposal_votes', votesRes);
+  const invitations = rows('invitations', invitationsRes);
+
   const rosterOpen = ctx.phase === 'invites';
   const activeCount = ctx.votingFamilies.length;
 
-  const proposalViews: ProposalView[] = (proposals ?? []).map((p) => {
-    const votes = (proposalVotes ?? []).filter((v) => v.proposal_id === p.id);
+  const proposalViews: ProposalView[] = proposals.map((p) => {
+    const votes = proposalVotes.filter((v) => v.proposal_id === p.id);
     return {
       id: p.id,
       proposed_name: p.proposed_name,
@@ -119,7 +123,7 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
                       familyId={family.id}
                       to="removed"
                       variant="danger"
-                      confirm={`Remove the ${family.name} from this trip? Use this when a family has gone quiet and is holding everyone up.`}
+                      confirm={`Remove ${family.name} from this trip? Use this when a family has gone quiet and is holding everyone up.`}
                     >
                       Remove
                     </StatusButton>
@@ -130,7 +134,9 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
               {isMine ? (
                 <div className="space-y-4 rounded-lg bg-surface-2 p-4">
                   <div>
-                    <p className="mb-2 text-sm font-medium text-text">Who's coming from your family</p>
+                    <p className="mb-2 text-sm font-medium text-text">
+                      Who&apos;s coming from your family
+                    </p>
                     <AttendeeEditor
                       tripId={id}
                       familyId={family.id}
@@ -196,8 +202,8 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
               </div>
             ))}
             <p className="text-xs text-muted">
-              If email isn't configured yet, copy a link and send it however you like — the link is
-              the whole sign-in.
+              If email isn&apos;t configured yet, copy a link and send it however you like — the
+              link is the whole sign-in.
             </p>
             <ResendInvitesButton tripId={id} />
           </Card>
@@ -220,8 +226,8 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
           <div>
             <p className="font-medium text-text">Ready to start picking dates?</p>
             <p className="text-sm text-muted">
-              Families who haven't accepted yet can still join — their invite links keep working.
-              After this, adding anyone needs the group's approval.
+              Families who haven&apos;t accepted yet can still join — their invite links keep
+              working. After this, adding anyone needs the group&apos;s approval.
             </p>
           </div>
           <div>

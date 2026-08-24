@@ -63,7 +63,8 @@ async function flushInvitations(tripId: string): Promise<{ sent: number; failed:
       fromFamily: inv.families?.name ?? 'organizer',
       organizerEmail: user?.email,
     });
-    delivered ? sent++ : failed++;
+    if (delivered) sent++;
+    else failed++;
 
     // Stamp regardless: the row is the record that an invite exists, and the
     // token stays valid, so an undelivered one can be copied out by hand.

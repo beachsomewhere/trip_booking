@@ -3,7 +3,7 @@ import { AssignUnits, UnbookButton, type AssignableCandidate } from '@/component
 import { AdvanceButton } from '@/components/AdvanceButton';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext } from '@/lib/queries';
+import { loadTripContext, rows } from '@/lib/queries';
 import { formatDateRange, nightsBetween, pluralize } from '@/lib/format';
 
 export default async function SummaryPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,15 +11,15 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
   const ctx = await loadTripContext(id);
   const supabase = await createClient();
 
-  const [{ data: candidates }, { data: picks }, { data: selections }] = await Promise.all([
+  const [candidatesRes, picksRes, selectionsRes] = await Promise.all([
     supabase.from('lodging_candidates').select('*').eq('trip_id', id),
     supabase.from('lodging_picks').select('*').eq('trip_id', id),
     supabase.from('lodging_selections').select('*').eq('trip_id', id),
   ]);
 
-  const allCandidates = candidates ?? [];
-  const allPicks = picks ?? [];
-  const allSelections = selections ?? [];
+  const allCandidates = rows('lodging_candidates', candidatesRes);
+  const allPicks = rows('lodging_picks', picksRes);
+  const allSelections = rows('lodging_selections', selectionsRes);
 
   // Scope the join table to this trip's selections. RLS would let a member of
   // two trips see both, and an unscoped read would mix them together here.

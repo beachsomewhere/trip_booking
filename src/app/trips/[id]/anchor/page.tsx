@@ -3,7 +3,7 @@ import { ProposePlaceForm } from '@/components/places/ProposePlaceForm';
 import { PhaseProgressPanel } from '@/components/PhaseProgressPanel';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext } from '@/lib/queries';
+import { loadTripContext, rows } from '@/lib/queries';
 import { boardBase } from '@/lib/board';
 import { phaseProgress, shouldNudgeOrganizer } from '@/lib/consensus';
 import { isPhaseComplete } from '@/lib/phases';
@@ -13,18 +13,18 @@ export default async function AnchorPage({ params }: { params: Promise<{ id: str
   const ctx = await loadTripContext(id);
   const supabase = await createClient();
 
-  const [{ data: proposals }, { data: votes }] = await Promise.all([
+  const [proposalsRes, votesRes] = await Promise.all([
     supabase.from('anchor_proposals').select('*').eq('trip_id', id),
     supabase.from('anchor_votes').select('*').eq('trip_id', id),
   ]);
 
-  const rows = proposals ?? [];
-  const allVotes = votes ?? [];
+  const proposals = rows('anchor_proposals', proposalsRes);
+  const allVotes = rows('anchor_votes', votesRes);
   const done = isPhaseComplete(ctx.phase, 'anchor');
   const canVote = !done && ctx.myFamily?.status === 'active';
 
-  const progress = phaseProgress(ctx.votingFamilies, rows, allVotes);
-  const base = boardBase(rows, allVotes, ctx.votingFamilies, ctx.myFamily?.id ?? null);
+  const progress = phaseProgress(ctx.votingFamilies, proposals, allVotes);
+  const base = boardBase(proposals, allVotes, ctx.votingFamilies, ctx.myFamily?.id ?? null);
 
   const items: BoardItem[] = base.map(({ proposal, item }) => ({
     ...item,

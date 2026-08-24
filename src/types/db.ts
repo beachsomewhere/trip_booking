@@ -42,8 +42,8 @@ export type Database = {
           formatted_address: string | null
           google_place_id: string | null
           id: string
-          lat: number
-          lng: number
+          lat: number | null
+          lng: number | null
           name: string
           note: string | null
           radius_mi: number
@@ -57,8 +57,8 @@ export type Database = {
           formatted_address?: string | null
           google_place_id?: string | null
           id?: string
-          lat: number
-          lng: number
+          lat?: number | null
+          lng?: number | null
           name: string
           note?: string | null
           radius_mi?: number
@@ -72,8 +72,8 @@ export type Database = {
           formatted_address?: string | null
           google_place_id?: string | null
           id?: string
-          lat?: number
-          lng?: number
+          lat?: number | null
+          lng?: number | null
           name?: string
           note?: string | null
           radius_mi?: number

@@ -5,7 +5,7 @@ import { ResolvePrefsButton } from '@/components/lodging/ResolvePrefsButton';
 import { AdvanceButton } from '@/components/AdvanceButton';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext } from '@/lib/queries';
+import { loadTripContext, rows } from '@/lib/queries';
 import { HOUSING_LABEL, pluralize } from '@/lib/format';
 import { isPhaseComplete } from '@/lib/phases';
 
@@ -14,15 +14,15 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
   const ctx = await loadTripContext(id);
   const supabase = await createClient();
 
-  const [{ data: prefs }, { data: candidates }, { data: picks }] = await Promise.all([
+  const [prefsRes, candidatesRes, picksRes] = await Promise.all([
     supabase.from('lodging_prefs').select('*').eq('trip_id', id),
     supabase.from('lodging_candidates').select('*').eq('trip_id', id).order('created_at'),
     supabase.from('lodging_picks').select('*').eq('trip_id', id),
   ]);
 
-  const allPrefs = prefs ?? [];
-  const allCandidates = candidates ?? [];
-  const allPicks = picks ?? [];
+  const allPrefs = rows('lodging_prefs', prefsRes);
+  const allCandidates = rows('lodging_candidates', candidatesRes);
+  const allPicks = rows('lodging_picks', picksRes);
   const done = isPhaseComplete(ctx.phase, 'lodging');
 
   const myPrefs = allPrefs.find((p) => p.family_id === ctx.myFamily?.id);
