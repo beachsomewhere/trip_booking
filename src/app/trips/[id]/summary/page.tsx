@@ -99,7 +99,27 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
       : null;
 
   const placed = new Set(links.map((l) => l.family_id));
-  const unassigned = ctx.votingFamilies.filter((f) => !placed.has(f.id));
+
+  // A family that said they want their own place is not a loose end. They are
+  // not waiting to be put somewhere, so listing them as unplaced reads as a
+  // problem to chase and makes the organizer feel unfinished when they are not.
+  const separate = new Set(
+    allPrefs.filter((p) => p.stay_together_pref === 'prefer_separate').map((p) => p.family_id),
+  );
+
+  // Unless they have actually put a place forward — suggested one or shortlisted
+  // one. Then there is something concrete to assign them to, and they belong in
+  // the picker after all.
+  const contributed = new Set([
+    ...allCandidates.map((c) => c.added_by_family_id).filter(Boolean),
+    ...allPicks.map((p) => p.family_id),
+  ]);
+  const sortingOwn = ctx.votingFamilies.filter((f) => separate.has(f.id) && !contributed.has(f.id));
+  const sortingOwnIds = new Set(sortingOwn.map((f) => f.id));
+
+  const unassigned = ctx.votingFamilies.filter(
+    (f) => !placed.has(f.id) && !sortingOwnIds.has(f.id),
+  );
 
   return (
     <div className="space-y-6">
@@ -204,6 +224,13 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
           </p>
         ) : null}
 
+        {sortingOwn.length > 0 ? (
+          <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
+            Booking separately, nothing needed here:{' '}
+            {sortingOwn.map((f) => f.name).join(', ')}
+          </p>
+        ) : null}
+
         <SleepingArrangement rows={arrangement} />
       </section>
 
@@ -219,11 +246,15 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
           <AssignUnits
             tripId={id}
             candidates={shortlisted}
-            families={ctx.votingFamilies.map((f) => ({
-              id: f.id,
-              name: f.name,
-              headcount: f.family_attendees.length,
-            }))}
+            families={ctx.votingFamilies
+              .filter((f) => !sortingOwnIds.has(f.id))
+              .map((f) => ({
+                id: f.id,
+                name: f.name,
+                headcount: f.family_attendees.length,
+                /** Their own place, but they put one forward — so still placeable. */
+                separate: separate.has(f.id),
+              }))}
             assignments={assignments}
             selectionIds={Object.fromEntries(
               allSelections.map((sel) => [sel.candidate_id, sel.id]),

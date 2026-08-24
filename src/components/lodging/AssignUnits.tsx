@@ -14,6 +14,12 @@ export interface AssignableFamily {
   id: string;
   name: string;
   headcount: number;
+  /**
+   * They want their own place, but put one forward, so there is something to
+   * place them in. Families who want their own place and have suggested
+   * nothing are not in this list at all — they are not waiting on anybody.
+   */
+  separate?: boolean;
 }
 
 /**
@@ -111,6 +117,7 @@ export function AssignUnits({
                   )}
                 >
                   {f.name} ({f.headcount})
+                  {f.separate ? <span className="text-muted"> · own place</span> : null}
                 </button>
               ))}
             </div>
