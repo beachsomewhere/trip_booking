@@ -66,7 +66,10 @@ export function AddEmailForm({ tripId, familyId }: { tripId: string; familyId: s
   return (
     <form action={action} className="space-y-2">
       <div className="flex gap-2">
-        <Input name="email" type="email" required placeholder="spouse@example.com" className="flex-1" />
+        {/* Width on the wrapper, not the input — see AttendeeEditor. */}
+        <div className="flex-1">
+          <Input name="email" type="email" required placeholder="spouse@example.com" />
+        </div>
         <Button type="submit" variant="secondary" disabled={pending}>
           Add
         </Button>

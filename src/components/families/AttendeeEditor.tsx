@@ -44,27 +44,44 @@ export function AttendeeEditor({
 
   return (
     <form action={action} className="space-y-3">
+      {/* Column headers: the fields are narrow enough that placeholders alone
+          left people guessing which box was which. */}
+      <div className="flex gap-2 px-1 text-xs font-medium text-muted">
+        <span className="flex-1">Name</span>
+        <span className="w-20">Age</span>
+        <span className="w-9" aria-hidden />
+      </div>
+
       <div className="space-y-2">
         {rows.map((row) => (
-          <div key={row.key} className="flex gap-2">
-            <Input
-              name="attendeeName"
-              value={row.name}
-              onChange={(e) => update(row.key, { name: e.target.value })}
-              placeholder="Name"
-              className="flex-1"
-            />
-            <Input
-              name="attendeeAge"
-              value={row.age}
-              onChange={(e) => update(row.key, { age: e.target.value })}
-              placeholder="Age"
-              inputMode="numeric"
-              className="w-20"
-            />
+          <div key={row.key} className="flex items-center gap-2">
+            {/* Widths live on these wrappers, not on the inputs. The shared
+                input style sets w-full, and Tailwind resolves a w-full/w-20
+                clash by stylesheet order rather than by which class you wrote
+                last — which silently made the age box wider than the name. */}
+            <div className="flex-1">
+              <Input
+                name="attendeeName"
+                value={row.name}
+                onChange={(e) => update(row.key, { name: e.target.value })}
+                placeholder="Name"
+                aria-label="Name"
+              />
+            </div>
+            <div className="w-20">
+              <Input
+                name="attendeeAge"
+                value={row.age}
+                onChange={(e) => update(row.key, { age: e.target.value })}
+                placeholder="Age"
+                inputMode="numeric"
+                aria-label="Age"
+              />
+            </div>
             <Button
               type="button"
               variant="ghost"
+              className="w-9 px-0"
               onClick={() => setRows((rs) => rs.filter((r) => r.key !== row.key))}
               aria-label={`Remove ${row.name || 'person'}`}
             >

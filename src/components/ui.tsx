@@ -85,6 +85,15 @@ export const inputClass =
   'w-full rounded-lg border border-edge bg-surface px-3 py-2 text-sm text-text ' +
   'placeholder:text-muted/70';
 
+/**
+ * Note: `inputClass` sets `w-full`, and `cx` only concatenates — it does not
+ * resolve Tailwind conflicts. Passing a competing width (`w-20`, `flex-1`)
+ * through `className` leaves both classes on the element, and the winner is
+ * decided by stylesheet order rather than by which you wrote last. That once
+ * made an age field render wider than the name beside it.
+ *
+ * Put widths on a wrapper element instead.
+ */
 export function Input({ className, ...props }: ComponentProps<'input'>) {
   return <input className={cx(inputClass, className)} {...props} />;
 }

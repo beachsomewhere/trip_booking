@@ -215,14 +215,16 @@ export function PasteLinkForm({ tripId }: { tripId: string }) {
         hint="Airbnb, VRBO, Booking, a hotel's own site — anything with a URL."
       >
         <div className="flex gap-2">
-          <Input
-            name="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onBlur={unfurl}
-            placeholder="https://www.airbnb.com/rooms/…"
-            className="flex-1"
-          />
+          {/* Width on the wrapper, not the input — see AttendeeEditor. */}
+          <div className="flex-1">
+            <Input
+              name="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onBlur={unfurl}
+              placeholder="https://www.airbnb.com/rooms/…"
+            />
+          </div>
           <Button type="button" variant="secondary" onClick={unfurl} disabled={looking || !url}>
             {looking ? 'Reading…' : 'Read it'}
           </Button>
