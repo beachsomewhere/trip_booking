@@ -28,6 +28,11 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
   const knownFamilies = await loadKnownFamilies(id);
   const locks = await loadPhaseLocks(id, 'invites', ctx);
 
+  // Nobody can close the Who step while an invite is unanswered: the guest list
+  // shuts when the trip moves on, so a family accepting afterwards could never
+  // add anyone themselves.
+  const unanswered = ctx.families.filter((f) => f.status === 'invited');
+
   const { data: invitationRows } = await supabase
     .from('invitations')
     .select('*')
@@ -202,6 +207,13 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
           isOrganizer={ctx.isOrganizer}
           advanceLabel="Everyone's in — start picking dates"
           canLock={ctx.myFamily?.status === 'active'}
+          blockedReason={
+            unanswered.length > 0
+              ? `Waiting on ${unanswered.map((f) => f.name).join(', ')} to accept or decline. ` +
+                'Families can only be added while the trip is on Who, so moving on now would leave ' +
+                'them unable to add anyone. Remind them, or remove them if they’re not coming.'
+              : null
+          }
         />
       ) : null}
 

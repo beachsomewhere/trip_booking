@@ -35,6 +35,7 @@ export function PhaseLockPanel({
   isOrganizer,
   advanceLabel,
   canLock = true,
+  blockedReason = null,
 }: {
   tripId: string;
   phase: TripPhase;
@@ -44,6 +45,12 @@ export function PhaseLockPanel({
   isOrganizer: boolean;
   advanceLabel?: string;
   canLock?: boolean;
+  /**
+   * Why this step cannot be closed yet, if it cannot. Set while invitations are
+   * outstanding: adding families stops when the trip moves on, so anyone who
+   * accepts afterwards lands in a trip they can never add to.
+   */
+  blockedReason?: string | null;
 }) {
   const [pending, start] = useTransition();
   const [reminded, setReminded] = useState<string[]>([]);
@@ -124,9 +131,17 @@ export function PhaseLockPanel({
         ))}
       </ul>
 
+      {/* Blocked means nobody locks in and nothing advances — not even the
+          organizer. This is the one case where the usual "move on without them"
+          escape hatch is the wrong answer, because moving on is what causes the
+          harm. Removing the unanswered family is the way out instead. */}
+      {blockedReason ? (
+        <p className="rounded-lg bg-clay-100 px-3 py-2 text-sm text-clay-600">{blockedReason}</p>
+      ) : null}
+
       {/* Your own lock. Reversible while the step is open — changing your mind
           is normal, and a lock you cannot undo is one people avoid pressing. */}
-      {mine && canLock ? (
+      {mine && canLock && !blockedReason ? (
         <div className="flex flex-wrap items-center gap-3 border-t border-edge pt-3">
           {mine.locked ? (
             <>
@@ -164,7 +179,7 @@ export function PhaseLockPanel({
       ) : null}
 
       {/* The organizer's move-on control. */}
-      {isOrganizer && nextPhase ? (
+      {isOrganizer && nextPhase && !blockedReason ? (
         <div className="space-y-2 border-t border-edge pt-3">
           {everyoneIn ? (
             <Button
