@@ -1,4 +1,5 @@
 import { AttendeeEditor } from '@/components/families/AttendeeEditor';
+import { loadHouseholdPeople, saveAttendees } from '@/actions/families';
 import { FamilyProposalCard, type ProposalView } from '@/components/families/FamilyProposalCard';
 import { InviteFamilyForm } from '@/components/families/InviteFamilyForm';
 import {
@@ -15,11 +16,16 @@ import { createClient } from '@/lib/supabase/server';
 import { loadTripContext, rows } from '@/lib/queries';
 import { inviteUrl } from '@/lib/email/invites';
 import { pluralize } from '@/lib/format';
+import { isChildOn } from '@/lib/age';
 
 export default async function FamiliesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await loadTripContext(id);
   const supabase = await createClient();
+
+  // Prefill the attendee editor from this user's household, so a returning
+  // family confirms who is coming instead of retyping everyone.
+  const householdPeople = ctx.myFamily ? await loadHouseholdPeople(ctx.myFamily.id) : [];
 
   const [proposalsRes, votesRes, invitationsRes] = await Promise.all([
     supabase
@@ -75,8 +81,9 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
         {ctx.families.map((family) => {
           const isMine = family.id === ctx.myFamily?.id;
           const heads = family.family_attendees.length;
-          const kids = family.family_attendees.filter(
-            (a) => a.age !== null && a.age < 18,
+          // Ages are as they'll be on the trip, not today — see lib/age.ts.
+          const kids = family.family_attendees.filter((a) =>
+            isChildOn(a, ctx.trip.agreed_start_date),
           ).length;
 
           return (
@@ -139,9 +146,16 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
                       Who&apos;s coming from your family
                     </p>
                     <AttendeeEditor
-                      tripId={id}
-                      familyId={family.id}
-                      initial={family.family_attendees.map((a) => ({ name: a.name, age: a.age }))}
+                      save={saveAttendees.bind(null, id, family.id)}
+                      tripStart={ctx.trip.agreed_start_date}
+                      initial={householdPeople.map((p, i) => ({
+                        key: `hh${i}`,
+                        personId: p.personId,
+                        name: p.name,
+                        birthYear: p.birthYear,
+                        birthMonth: p.birthMonth,
+                        coming: p.coming,
+                      }))}
                     />
                   </div>
                   <div>

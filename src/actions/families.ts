@@ -212,29 +212,124 @@ export async function saveAttendees(
   formData: FormData,
 ): Promise<ActionState> {
   const names = formData.getAll('attendeeName').map((v) => String(v).trim());
-  const ages = formData.getAll('attendeeAge').map((v) => String(v).trim());
+  const months = formData.getAll('birthMonth').map((v) => String(v).trim());
+  const years = formData.getAll('birthYear').map((v) => String(v).trim());
+  const personIds = formData.getAll('personId').map((v) => String(v).trim());
+  const coming = formData.getAll('coming').map((v) => String(v) === '1');
 
-  const rows = names
-    .map((name, i) => ({ name: name || null, age: ages[i] === '' ? null : Number(ages[i]) }))
-    .filter((r) => r.name !== null || r.age !== null)
-    .filter((r) => r.age === null || (Number.isFinite(r.age) && r.age >= 0 && r.age < 120));
+  const num = (v: string) => (v === '' ? null : Number(v));
+
+  const people = names
+    .map((name, i) => ({
+      name,
+      birth_month: num(months[i] ?? ''),
+      birth_year: num(years[i] ?? ''),
+      person_id: personIds[i] || null,
+      coming: coming[i] ?? true,
+    }))
+    .filter((p) => p.name.length > 0);
 
   const supabase = await createClient();
+
+  // The household is the durable record: it keeps everyone, including people
+  // sitting this trip out, so the next trip still knows about them.
+  const { data: householdId, error: hhError } = await supabase.rpc('ensure_household');
+  if (hhError) return { error: hhError.message };
+
+  const saved: { person: (typeof people)[number]; id: string | null }[] = [];
+
+  for (const person of people) {
+    const payload = {
+      household_id: householdId,
+      name: person.name,
+      birth_month: person.birth_month,
+      birth_year: person.birth_year,
+    };
+
+    if (person.person_id) {
+      const { error } = await supabase
+        .from('household_people')
+        .update(payload)
+        .eq('id', person.person_id);
+      if (error) return { error: error.message };
+      saved.push({ person, id: person.person_id });
+    } else {
+      const { data, error } = await supabase
+        .from('household_people')
+        .insert(payload)
+        .select('id')
+        .single();
+      if (error) return { error: error.message };
+      saved.push({ person, id: data?.id ?? null });
+    }
+  }
+
+  // Make sure this trip's family is attached to the household, so a future
+  // visit prefills from it.
+  await supabase.from('families').update({ household_id: householdId }).eq('id', familyId);
+
+  // Attendees are replaced wholesale — only the people marked as coming, with a
+  // snapshot of their birth data so other families can read the headcount
+  // without access to this household's records.
   const { error: delError } = await supabase
     .from('family_attendees')
     .delete()
     .eq('family_id', familyId);
   if (delError) return { error: delError.message };
 
-  if (rows.length > 0) {
-    const { error } = await supabase
-      .from('family_attendees')
-      .insert(rows.map((r) => ({ ...r, family_id: familyId })));
+  const attending = saved.filter((s) => s.person.coming);
+  if (attending.length > 0) {
+    const { error } = await supabase.from('family_attendees').insert(
+      attending.map((s) => ({
+        family_id: familyId,
+        person_id: s.id,
+        name: s.person.name,
+        birth_month: s.person.birth_month,
+        birth_year: s.person.birth_year,
+      })),
+    );
     if (error) return { error: error.message };
   }
 
   revalidatePath(`/trips/${tripId}`, 'layout');
-  return { ok: 'Saved.' };
+  return {
+    ok: `Saved. We'll remember ${people.length === 1 ? 'them' : 'everyone'} for your next trip.`,
+  };
+}
+
+/**
+ * The household's people, for prefilling a new trip.
+ *
+ * Anyone already on this trip is marked as coming; the rest are offered
+ * unticked, so joining a trip is a matter of confirming rather than retyping.
+ */
+export async function loadHouseholdPeople(familyId: string) {
+  const supabase = await createClient();
+
+  const { data: householdId } = await supabase.rpc('ensure_household');
+  if (!householdId) return [];
+
+  const [{ data: people }, { data: attending }] = await Promise.all([
+    supabase
+      .from('household_people')
+      .select('id, name, birth_year, birth_month')
+      .eq('household_id', householdId)
+      .order('birth_year', { ascending: true, nullsFirst: false }),
+    supabase.from('family_attendees').select('person_id, name').eq('family_id', familyId),
+  ]);
+
+  const attendingIds = new Set((attending ?? []).map((a) => a.person_id).filter(Boolean));
+  const attendingNames = new Set((attending ?? []).map((a) => (a.name ?? '').toLowerCase()));
+
+  return (people ?? []).map((p) => ({
+    personId: p.id,
+    name: p.name,
+    birthYear: p.birth_year == null ? '' : String(p.birth_year),
+    birthMonth: p.birth_month == null ? '' : String(p.birth_month),
+    // Match on name too, so attendees added before households existed still
+    // show as coming rather than appearing to have been dropped.
+    coming: attendingIds.has(p.id) || attendingNames.has(p.name.toLowerCase()),
+  }));
 }
 
 /** Adds a second email (a spouse) to your own family. */

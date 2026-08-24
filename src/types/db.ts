@@ -362,6 +362,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by_user_id: string | null
+          household_id: string | null
           id: string
           name: string
           status: Database["public"]["Enums"]["family_status"]
@@ -370,6 +371,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by_user_id?: string | null
+          household_id?: string | null
           id?: string
           name: string
           status?: Database["public"]["Enums"]["family_status"]
@@ -378,12 +380,20 @@ export type Database = {
         Update: {
           created_at?: string
           created_by_user_id?: string | null
+          household_id?: string | null
           id?: string
           name?: string
           status?: Database["public"]["Enums"]["family_status"]
           trip_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "families_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "families_trip_id_fkey"
             columns: ["trip_id"]
@@ -396,24 +406,33 @@ export type Database = {
       family_attendees: {
         Row: {
           age: number | null
+          birth_month: number | null
+          birth_year: number | null
           created_at: string
           family_id: string
           id: string
           name: string | null
+          person_id: string | null
         }
         Insert: {
           age?: number | null
+          birth_month?: number | null
+          birth_year?: number | null
           created_at?: string
           family_id: string
           id?: string
           name?: string | null
+          person_id?: string | null
         }
         Update: {
           age?: number | null
+          birth_month?: number | null
+          birth_year?: number | null
           created_at?: string
           family_id?: string
           id?: string
           name?: string | null
+          person_id?: string | null
         }
         Relationships: [
           {
@@ -421,6 +440,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_attendees_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "household_people"
             referencedColumns: ["id"]
           },
         ]
@@ -578,6 +604,88 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      household_people: {
+        Row: {
+          birth_month: number | null
+          birth_year: number | null
+          created_at: string
+          household_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          birth_month?: number | null
+          birth_year?: number | null
+          created_at?: string
+          household_id: string
+          id?: string
+          name: string
+        }
+        Update: {
+          birth_month?: number | null
+          birth_year?: number | null
+          created_at?: string
+          household_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_people_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_users: {
+        Row: {
+          created_at: string
+          household_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_users_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      households: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       invitations: {
         Row: {
@@ -1001,10 +1109,12 @@ export type Database = {
         Returns: string
       }
       delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
+      ensure_household: { Args: { p_name?: string }; Returns: string }
       invite_family: {
         Args: { p_emails: string[]; p_name: string; p_trip_id: string }
         Returns: string
       }
+      is_my_household: { Args: { p_household_id: string }; Returns: boolean }
       is_trip_member: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_organizer: { Args: { p_trip_id: string }; Returns: boolean }
       my_family_id: { Args: { p_trip_id: string }; Returns: string }

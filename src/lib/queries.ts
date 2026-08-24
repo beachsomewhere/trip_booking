@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { createClient, getUser } from '@/lib/supabase/server';
 import type { Database } from '@/types/db';
 import { normalizePhase, type TripPhase } from '@/lib/phases';
+import { isChildOn } from '@/lib/age';
 
 export type Trip = Database['public']['Tables']['trips']['Row'];
 export type Family = Database['public']['Tables']['families']['Row'];
@@ -28,8 +29,6 @@ export interface TripContext {
   adults: number;
   children: number;
 }
-
-const CHILD_AGE = 18;
 
 /**
  * The one loader every trip screen uses.
@@ -61,8 +60,9 @@ export async function loadTripContext(tripId: string): Promise<TripContext> {
   const myFamily =
     roster.find((f) => f.family_members.some((m) => m.user_id === user.id)) ?? null;
 
+  // Ages are computed on the trip's start date, not today — see lib/age.ts.
   const attendees = voting.flatMap((f) => f.family_attendees);
-  const children = attendees.filter((a) => a.age !== null && a.age < CHILD_AGE).length;
+  const children = attendees.filter((a) => isChildOn(a, trip.agreed_start_date)).length;
 
   return {
     trip,

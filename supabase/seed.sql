@@ -67,11 +67,12 @@ begin
     (v_chen,   'mei@chen.test',    v_u_mei,  true),
     (v_okafor, 'ade@okafor.test',  v_u_ade,  true);
 
-  insert into family_attendees (family_id, name, age) values
-    (v_barnes, 'Kyle', 41), (v_barnes, 'Sam', 39),
-    (v_barnes, 'Ellie', 9), (v_barnes, 'Nate', 6),
-    (v_chen, 'Mei', 44), (v_chen, 'Jon', 45), (v_chen, 'Ivy', 12),
-    (v_okafor, 'Ade', 38), (v_okafor, 'Tolu', 37);
+  -- Birth month + year rather than an age: see lib/age.ts for why.
+  insert into family_attendees (family_id, name, birth_month, birth_year) values
+    (v_barnes, 'Kyle', 4, 1985), (v_barnes, 'Sam', 9, 1987),
+    (v_barnes, 'Ellie', 2, 2017), (v_barnes, 'Nate', 11, 2019),
+    (v_chen, 'Mei', 6, 1982), (v_chen, 'Jon', 1, 1981), (v_chen, 'Ivy', 8, 2014),
+    (v_okafor, 'Ade', 3, 1988), (v_okafor, 'Tolu', 12, 1988);
 
   insert into invitations (trip_id, family_id, email, sent_at)
   values (v_trip, v_okafor, 'ade@okafor.test', now());
