@@ -15,9 +15,21 @@ export default async function TripLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { trip, phase, userEmail, headcount, votingFamilies } = await loadTripContext(id);
+  const { trip, phase, userEmail, headcount, votingFamilies, families } =
+    await loadTripContext(id);
   const days = daysUntil(trip.target_finalize_by);
   const finalized = phase === 'finalized';
+
+  // Everyone on the trip, including families who have not answered their
+  // invitation yet. This used to count only active families, so a trip showing
+  // three families in the roster announced "2 families" at the top — which
+  // reads as a bug rather than as a distinction. The trips list has always
+  // counted both; now they agree.
+  //
+  // Counts that gate a decision still exclude them, and should: someone who
+  // has not accepted cannot vote or lock a step in.
+  const awaitingInvite = families.filter((f) => f.status === 'invited').length;
+  const onTheTrip = votingFamilies.length + awaitingInvite;
 
   return (
     <>
@@ -34,8 +46,10 @@ export default async function TripLayout({
                 {trip.name}
               </h1>
               <p className="text-sm text-muted">
-                {pluralize(votingFamilies.length, 'family', 'families')} ·{' '}
+                {pluralize(onTheTrip, 'family', 'families')}
+                {awaitingInvite > 0 ? ` (${awaitingInvite} not accepted)` : ''} ·{' '}
                 {pluralize(headcount, 'person', 'people')}
+                {awaitingInvite > 0 ? ' so far' : ''}
               </p>
               {trip.description ? (
                 <p className="mt-1 max-w-xl text-sm text-text">{trip.description}</p>
