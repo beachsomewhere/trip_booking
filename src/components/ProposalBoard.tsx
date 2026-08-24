@@ -36,8 +36,8 @@ export interface BoardItem {
  * genuine blocker stand out from a grumble.
  */
 const CHOICES: { value: VoteChoice; label: string; hint: string }[] = [
-  { value: 'yes', label: 'Works', hint: 'Suits us' },
-  { value: 'maybe', label: 'Not ideal', hint: "We'd come, but it's not our first choice" },
+  { value: 'yes', label: 'Works, preferred', hint: 'This is what we want' },
+  { value: 'maybe', label: 'Works, less preferred', hint: "We'd come, but we'd rather something else" },
   { value: 'no', label: "Doesn't work", hint: "We can't make it" },
 ];
 
@@ -120,9 +120,11 @@ function ProposalCard({
           to "1 can't", because only the yes column counted as a vote. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
         {item.yes > 0 ? (
-          <span className="text-moss-600">In — {listFamilies(item.yesFamilyNames)}</span>
+          <span className="text-moss-600">Preferred — {listFamilies(item.yesFamilyNames)}</span>
         ) : null}
-        {item.maybe > 0 ? <span>Not ideal — {listFamilies(item.maybeFamilyNames)}</span> : null}
+        {item.maybe > 0 ? (
+          <span>Less preferred — {listFamilies(item.maybeFamilyNames)}</span>
+        ) : null}
         {item.no > 0 ? (
           <span className="text-clay-600">Can&apos;t — {listFamilies(item.noFamilyNames)}</span>
         ) : null}

@@ -6,7 +6,7 @@ import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
 import { loadPhaseLocks, loadTripContext, rows } from '@/lib/queries';
 import { boardBase } from '@/lib/board';
-import { formatDateRange, nightsBetween, pluralize, rangeOverlap } from '@/lib/format';
+import { formatDateRange, listFamilies, nightsBetween, pluralize, rangeOverlap } from '@/lib/format';
 import { isPhaseComplete } from '@/lib/phases';
 
 export default async function DatesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,11 +37,31 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
 
   const locks = await loadPhaseLocks(id, 'dates', ctx, newestProposalAt);
   const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
-  // Nothing to lock in if every option on the table is impossible for someone.
-  // Locking would otherwise record unanimous agreement on a date that
-  // cannot happen, and the group would only find out at the next step.
-  const workable = base.filter(({ item }) => !item.blocked);
-  const nothingWorks = base.length > 0 && workable.length === 0;
+  const activeNames = ctx.votingFamilies.map((f) => f.name);
+
+  // A step closes on a single option every family actively prefers — not on a
+  // majority, and not on grudging acceptance. Anything less and somebody is
+  // being quietly overruled on a decision they have to live with for a week.
+  const unanimous = base.find(({ item }) => item.yes === ctx.votingFamilies.length);
+
+  // The nearest miss, so "who are we waiting on" is answerable rather than a
+  // shrug: most preferred first, and who has yet to prefer it.
+  const closest = [...base].sort((a, b) => b.item.yes - a.item.yes)[0] ?? null;
+  const closestOutstanding = closest
+    ? activeNames.filter((n) => !closest.item.yesFamilyNames.includes(n))
+    : [];
+
+  const datesBlocked =
+    base.length === 0
+      ? 'Nobody has suggested dates yet.'
+      : unanimous
+        ? null
+        : closest && closest.item.yes > 0
+          ? `No dates work for everyone yet. Closest is ${formatDateRange(
+              closest.proposal.start_date,
+              closest.proposal.end_date,
+            )} — waiting on ${listFamilies(closestOutstanding)} to mark it preferred.`
+          : 'No dates work for everyone yet — nobody has marked a week as preferred.';
 
   // Windows every proposal can live inside. When the group's ranges all overlap
   // there is usually an obvious answer nobody has spotted yet.
@@ -68,11 +88,10 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
     ),
   }));
 
-  const myVotedCount = allVotes.filter((v) => v.family_id === ctx.myFamily?.id).length;
-  const iProposed = proposals.some((p) => p.family_id === ctx.myFamily?.id && !p.withdrawn_at);
-  // The ordering that stops endless counter-proposals: look at what is already
-  // on the table before being handed a blank form.
-  const promptToRespondFirst = items.length > 0 && myVotedCount === 0 && !iProposed;
+  // Whether anything on the table is already this family's first choice.
+  const iPreferSomething = allVotes.some(
+    (v) => v.family_id === ctx.myFamily?.id && v.choice === 'yes',
+  );
 
   return (
     <div className="space-y-6">
@@ -83,7 +102,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
             ? 'Locked in.'
             : items.length === 0
               ? 'Post the weeks that work for your family. Everyone else does the same.'
-              : 'Say which work for you. “Not ideal” still counts as a yes — it just tells the group it isn’t your first choice.'
+              : 'Mark the week you actually want as preferred. Only suggest another if none of these are it.'
         }
       />
 
@@ -103,12 +122,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
           rows={locks}
           isOrganizer={ctx.isOrganizer}
           canLock={ctx.myFamily?.status === 'active'}
-          blockedReason={
-            nothingWorks
-              ? `Every date on the table doesn't work for at least one family. Somebody needs to ` +
-                `suggest a date range that works for everyone before this step can be locked in.`
-              : null
-          }
+          blockedReason={datesBlocked}
         />
       ) : null}
 
@@ -138,30 +152,35 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
         />
       )}
 
-      {!done && ctx.myFamily?.status === 'active' ? (
-        <details open={!promptToRespondFirst} className="group">
-          <summary className="cursor-pointer list-none rounded-lg border border-edge bg-surface px-4 py-3 text-sm font-medium text-text">
-            {promptToRespondFirst
-              ? "None of these work — suggest other dates"
-              : 'Suggest dates'}
-          </summary>
-          <Card className="mt-2">
-            {/* Marking what others already proposed turns a blank calendar into
-                a reaction: you can see their week before choosing yours. */}
-            <ProposeDatesForm
-              tripId={id}
-              marked={live
-                .filter((p) => p.family_id !== ctx.myFamily?.id)
-                .map((p) => ({
-                  start: p.start_date,
-                  end: p.end_date,
-                  label:
-                    ctx.families.find((f) => f.id === p.family_id)?.name ??
-                    'Another family',
-                }))}
-            />
-          </Card>
-        </details>
+      {/* Suggest a week only when none of the ones on the table are already your
+          preference. Somebody who has found a week they want does not need a
+          blank form, and every extra option makes unanimity harder to reach. */}
+      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething ? (
+        <Card className="space-y-3">
+          <div>
+            <p className="font-medium text-text">
+              {base.length === 0
+                ? 'Suggest a week'
+                : "None of these are what you'd pick — suggest another"}
+            </p>
+            <p className="text-sm text-muted">
+              {base.length === 0
+                ? "Go first — it's much easier for everyone else to react than to start."
+                : 'Mark a week above as “Works, preferred” instead if one of them suits you.'}
+            </p>
+          </div>
+          <ProposeDatesForm
+            tripId={id}
+            marked={live
+              .filter((p) => p.family_id !== ctx.myFamily?.id)
+              .map((p) => ({
+                start: p.start_date,
+                end: p.end_date,
+                label:
+                  ctx.families.find((f) => f.id === p.family_id)?.name ?? 'Another family',
+              }))}
+          />
+        </Card>
       ) : null}
 
       {ctx.isOrganizer && !done && items.length === 0 ? (

@@ -6,7 +6,7 @@ import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
 import { loadPhaseLocks, loadTripContext, rows } from '@/lib/queries';
 import { boardBase } from '@/lib/board';
-import { formatDateRange } from '@/lib/format';
+import { formatDateRange, listFamilies } from '@/lib/format';
 import { isPhaseComplete } from '@/lib/phases';
 
 export default async function DestinationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,11 +37,30 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
 
   const locks = await loadPhaseLocks(id, 'destination', ctx, newestProposalAt);
   const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
-  // Nothing to lock in if every option on the table is impossible for someone.
-  // Locking would otherwise record unanimous agreement on a destination that
-  // cannot happen, and the group would only find out at the next step.
-  const workable = base.filter(({ item }) => !item.blocked);
-  const nothingWorks = base.length > 0 && workable.length === 0;
+  const activeNames = ctx.votingFamilies.map((f) => f.name);
+
+  // Same rule as the dates step: it closes on one option every family actively
+  // prefers, not on a majority or on grudging acceptance.
+  const unanimous = base.find(({ item }) => item.yes === ctx.votingFamilies.length);
+
+  const closest = [...base].sort((a, b) => b.item.yes - a.item.yes)[0] ?? null;
+  const closestOutstanding = closest
+    ? activeNames.filter((n) => !closest.item.yesFamilyNames.includes(n))
+    : [];
+
+  const iPreferSomething = allVotes.some(
+    (v) => v.family_id === ctx.myFamily?.id && v.choice === 'yes',
+  );
+
+  const destinationBlocked =
+    base.length === 0
+      ? 'Nobody has suggested a destination yet.'
+      : unanimous
+        ? null
+        : closest && closest.item.yes > 0
+          ? `No destination works for everyone yet. Closest is ${closest.proposal.name} — ` +
+            `waiting on ${listFamilies(closestOutstanding)} to mark it preferred.`
+          : 'No destination works for everyone yet — nobody has marked one as preferred.';
 
   const items: BoardItem[] = base.map(({ proposal, item }) => ({
     ...item,
@@ -76,7 +95,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
         subtitle={
           done
             ? 'Settled.'
-            : 'Somebody suggests a place, everyone else weighs in. “Not ideal” still counts as a yes — it just says it isn’t your first choice.'
+            : 'Mark the one you actually want as preferred. Only suggest another if none of these are it.'
         }
       />
 
@@ -103,12 +122,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
           rows={locks}
           isOrganizer={ctx.isOrganizer}
           canLock={ctx.myFamily?.status === 'active'}
-          blockedReason={
-            nothingWorks
-              ? `Every destination on the table doesn't work for at least one family. Somebody needs ` +
-                `to suggest one that works for everyone before this step can be locked in.`
-              : null
-          }
+          blockedReason={destinationBlocked}
         />
       ) : null}
 
@@ -128,8 +142,16 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
         />
       )}
 
-      {!done && ctx.myFamily?.status === 'active' ? (
-        <Card>
+      {/* Only offer the search when nothing on the table is already your first
+          choice — every extra option makes unanimity harder to reach. */}
+      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething ? (
+        <Card className="space-y-3">
+          {base.length > 0 ? (
+            <p className="text-sm text-muted">
+              None of these are what you&apos;d pick — suggest another, or mark one above as
+              “Works, preferred”.
+            </p>
+          ) : null}
           <ProposePlaceForm tripId={id} />
         </Card>
       ) : null}
