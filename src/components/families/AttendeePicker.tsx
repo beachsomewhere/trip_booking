@@ -81,21 +81,30 @@ export function AttendeePicker({
           );
 
           return (
-            <label
+            <button
               key={p.personId}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(p.personId)}
               className={cx(
-                'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
+                'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
                 on ? 'border-accent bg-accent-soft text-accent' : 'border-edge text-muted',
               )}
             >
-              <input
-                type="checkbox"
-                name="personId"
-                value={p.personId}
-                checked={on}
-                onChange={() => toggle(p.personId)}
-                className="h-4 w-4 accent-[var(--accent)]"
-              />
+              {/* Drawn, not a real checkbox. React resets a form's DOM fields
+                  after a form action runs, and a controlled input whose state
+                  did not change never re-renders to correct itself — so saving
+                  left every box visually unticked while the count still said
+                  four. Nothing here can drift from `selected`. */}
+              <span
+                aria-hidden
+                className={cx(
+                  'flex h-4 w-4 items-center justify-center rounded border text-[10px] font-bold',
+                  on ? 'border-accent bg-accent text-white' : 'border-edge',
+                )}
+              >
+                {on ? '✓' : ''}
+              </span>
               <span className="font-medium">{p.name}</span>
               {age != null ? (
                 <span className="text-xs opacity-70">
@@ -103,10 +112,14 @@ export function AttendeePicker({
                   {age}
                 </span>
               ) : null}
-            </label>
+            </button>
           );
         })}
       </div>
+
+      {selected.map((id) => (
+        <input key={id} type="hidden" name="personId" value={id} />
+      ))}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>

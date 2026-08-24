@@ -149,7 +149,7 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
       {/* ------------------------------------------------------------------ */}
       <section className="space-y-3">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-          {rosterOpen ? 'Invite a family' : 'Suggest another family'}
+          {rosterOpen ? 'Invite a family' : 'The guest list'}
         </h2>
         {/* Guest list closes when the trip moves on: a family arriving after
             dates are being voted on inherits decisions they had no part in, and
