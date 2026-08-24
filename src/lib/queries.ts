@@ -96,6 +96,40 @@ export function rows<T>(
   return res.data ?? [];
 }
 
+/**
+ * Per-family lock state for a phase, in roster order.
+ *
+ * Built for every screen rather than just the organizer's: seeing who the group
+ * is waiting on is the whole point, and hiding it is how a trip stalls with
+ * nobody knowing why.
+ */
+export async function loadPhaseLocks(
+  tripId: string,
+  phase: TripPhase,
+  ctx: TripContext,
+): Promise<
+  { familyId: string; name: string; locked: boolean; isMine: boolean; awaitingInvite: boolean }[]
+> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('phase_signoffs')
+    .select('family_id')
+    .eq('trip_id', tripId)
+    .eq('phase', phase);
+
+  const lockedIds = new Set((data ?? []).map((r) => r.family_id));
+
+  return ctx.families
+    .filter((f) => f.status === 'active' || f.status === 'invited')
+    .map((f) => ({
+      familyId: f.id,
+      name: f.name,
+      locked: lockedIds.has(f.id),
+      isMine: f.id === ctx.myFamily?.id,
+      awaitingInvite: f.status === 'invited',
+    }));
+}
+
 export function familyName(families: { id: string; name: string }[], id: string | null): string {
   if (!id) return 'Someone';
   return families.find((f) => f.id === id)?.name ?? 'Someone';

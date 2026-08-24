@@ -1,12 +1,11 @@
 import { ProposalBoard, type BoardItem } from '@/components/ProposalBoard';
 import { ProposeDatesForm } from '@/components/dates/ProposeDatesForm';
-import { PhaseProgressPanel } from '@/components/PhaseProgressPanel';
+import { PhaseLockPanel } from '@/components/PhaseLockPanel';
 import { AdvanceButton } from '@/components/AdvanceButton';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext, rows } from '@/lib/queries';
+import { loadPhaseLocks, loadTripContext, rows } from '@/lib/queries';
 import { boardBase } from '@/lib/board';
-import { phaseProgress, shouldNudgeOrganizer } from '@/lib/consensus';
 import { formatDateRange, nightsBetween, pluralize, rangeOverlap } from '@/lib/format';
 import { isPhaseComplete } from '@/lib/phases';
 
@@ -25,11 +24,10 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
   const done = isPhaseComplete(ctx.phase, 'dates');
   const canVote = !done && ctx.myFamily?.status === 'active';
 
-  // Full roster, not just active families: phaseProgress() and tally() filter to
-  // active internally, while name lookup needs everyone — otherwise a family
-  // that opts out or is removed turns into "Someone suggested" on proposals
-  // they already made.
-  const progress = phaseProgress(ctx.families, proposals, allVotes);
+  // Full roster, not just active families: tally() filters to active internally,
+  // while name lookup needs everyone — otherwise a family that opts out or is
+  // removed turns into "Someone suggested" on proposals they already made.
+  const locks = await loadPhaseLocks(id, 'dates', ctx);
   const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
 
   // Windows every proposal can live inside. When the group's ranges all overlap
@@ -86,13 +84,12 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
       ) : null}
 
       {!done ? (
-        <PhaseProgressPanel
-          progress={progress}
-          myFamilyId={ctx.myFamily?.id}
-          awaitingInvite={ctx.families
-            .filter((f) => f.status === 'invited')
-            .map((f) => ({ id: f.id, name: f.name }))}
-          nudge={ctx.isOrganizer && shouldNudgeOrganizer(progress, ctx.trip.target_finalize_by)}
+        <PhaseLockPanel
+          tripId={id}
+          phase="dates"
+          rows={locks}
+          isOrganizer={ctx.isOrganizer}
+          canLock={ctx.myFamily?.status === 'active'}
         />
       ) : null}
 

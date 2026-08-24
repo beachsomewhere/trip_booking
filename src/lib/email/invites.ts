@@ -40,6 +40,11 @@ function renderInvite({ tripName, fromFamily, token, tripDescription }: InviteEm
       Join the trip
     </a>
   </p>
+  <p style="font-size:14px;color:#6b6558;margin:0 0 20px">
+    Can't make it?
+    <a href="${url}/decline" style="color:#a5471f">Let them know</a> — it saves the group
+    waiting on an answer.
+  </p>
   <p style="font-size:13px;color:#6b6558;margin:0">
     Or paste this link: <br /><span style="word-break:break-all">${url}</span>
   </p>

@@ -1,19 +1,18 @@
 import { AttendeePicker } from '@/components/families/AttendeePicker';
 import { AttendeeEditor } from '@/components/families/AttendeeEditor';
 import { loadHouseholdPeople, loadKnownFamilies, saveFamilyAndAttend } from '@/actions/families';
-import { FamilyProposalCard, type ProposalView } from '@/components/families/FamilyProposalCard';
 import { InviteFamilyForm } from '@/components/families/InviteFamilyForm';
 import {
   LeaveTripButton,
   ResendInvitesButton,
   StatusButton,
 } from '@/components/families/FamilyControls';
-import { AdvanceButton } from '@/components/AdvanceButton';
+import { PhaseLockPanel } from '@/components/PhaseLockPanel';
 import { DeleteTripButton } from '@/components/DeleteTripButton';
 import { CopyLink } from '@/components/CopyLink';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext, rows } from '@/lib/queries';
+import { loadPhaseLocks, loadTripContext } from '@/lib/queries';
 import { inviteUrl } from '@/lib/email/invites';
 import { pluralize } from '@/lib/format';
 import { isChildOn } from '@/lib/age';
@@ -27,44 +26,18 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
   // family confirms who is coming instead of retyping everyone.
   const householdPeople = ctx.myFamily ? await loadHouseholdPeople(ctx.myFamily.id) : [];
   const knownFamilies = await loadKnownFamilies(id);
+  const locks = await loadPhaseLocks(id, 'invites', ctx);
 
-  const [proposalsRes, votesRes, invitationsRes] = await Promise.all([
-    supabase
-      .from('family_proposals')
-      .select('*')
-      .eq('trip_id', id)
-      .order('created_at', { ascending: false }),
-    supabase.from('family_proposal_votes').select('*').eq('trip_id', id),
-    supabase.from('invitations').select('*').eq('trip_id', id).is('accepted_at', null),
-  ]);
+  const { data: invitationRows } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('trip_id', id)
+    .is('accepted_at', null);
+  const invitations = invitationRows ?? [];
 
-  const proposals = rows('family_proposals', proposalsRes);
-  const proposalVotes = rows('family_proposal_votes', votesRes);
-  const invitations = rows('invitations', invitationsRes);
 
   const rosterOpen = ctx.phase === 'invites';
-  const activeCount = ctx.votingFamilies.length;
 
-  const proposalViews: ProposalView[] = proposals.map((p) => {
-    const votes = proposalVotes.filter((v) => v.proposal_id === p.id);
-    return {
-      id: p.id,
-      proposed_name: p.proposed_name,
-      proposed_emails: p.proposed_emails,
-      proposed_adults: p.proposed_adults,
-      proposed_children: p.proposed_children,
-      note: p.note,
-      status: p.status,
-      proposedByName:
-        ctx.families.find((f) => f.id === p.proposed_by_family_id)?.name ?? 'organizer',
-      approvals: votes.filter((v) => v.approve).length,
-      needed: activeCount,
-      myVote: votes.find((v) => v.family_id === ctx.myFamily?.id)?.approve ?? null,
-    };
-  });
-
-  const pendingProposals = proposalViews.filter((p) => p.status === 'pending');
-  const settledProposals = proposalViews.filter((p) => p.status !== 'pending');
 
   return (
     <div className="space-y-6">
@@ -72,8 +45,8 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
         title="Who's coming"
         subtitle={
           rosterOpen
-            ? 'Add the families first. Everyone gets an email with a link — no accounts to create.'
-            : 'The roster is set. Adding anyone now needs every family to agree first.'
+            ? 'Anyone can add a family — they get an email with a link, no accounts to create.'
+            : 'The guest list closed when the trip moved on to picking dates.'
         }
       />
 
@@ -172,41 +145,24 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
         })}
       </section>
 
-      {/* ------------------------------------------------------------------ */}
-      {pendingProposals.length > 0 ? (
-        <section className="space-y-3">
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-            Waiting on your approval
-          </h2>
-          {pendingProposals.map((p) => (
-            <FamilyProposalCard
-              key={p.id}
-              tripId={id}
-              proposal={p}
-              canVote={Boolean(ctx.myFamily) && ctx.myFamily?.status === 'active'}
-            />
-          ))}
-        </section>
-      ) : null}
 
       {/* ------------------------------------------------------------------ */}
       <section className="space-y-3">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
           {rosterOpen ? 'Invite a family' : 'Suggest another family'}
         </h2>
-        {rosterOpen && !ctx.isOrganizer ? (
-          <EmptyState
-            title="The organizer is still building the guest list"
-            body="Once the trip starts you'll be able to suggest families too."
-          />
-        ) : (
+        {/* Guest list closes when the trip moves on: a family arriving after
+            dates are being voted on inherits decisions they had no part in, and
+            changes the headcount the lodging step is sized against. */}
+        {rosterOpen ? (
           <Card>
-            <InviteFamilyForm
-              tripId={id}
-              mode={rosterOpen ? 'invite' : 'propose'}
-              known={knownFamilies}
-            />
+            <InviteFamilyForm tripId={id} known={knownFamilies} />
           </Card>
+        ) : (
+          <EmptyState
+            title="The guest list is closed"
+            body="Families can be added while the trip is still on Who. This one has moved on."
+          />
         )}
       </section>
 
@@ -232,36 +188,21 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
         </section>
       ) : null}
 
-      {/* ------------------------------------------------------------------ */}
-      {settledProposals.length > 0 ? (
-        <section className="space-y-2">
-          <h2 className="text-sm font-medium text-muted">Earlier suggestions</h2>
-          {settledProposals.map((p) => (
-            <FamilyProposalCard key={p.id} tripId={id} proposal={p} canVote={false} />
-          ))}
-        </section>
-      ) : null}
 
       {/* ------------------------------------------------------------------ */}
-      {ctx.isOrganizer && rosterOpen ? (
-        <Card className="space-y-3">
-          <div>
-            <p className="font-medium text-text">Ready to start picking dates?</p>
-            <p className="text-sm text-muted">
-              Families who haven&apos;t accepted yet can still join — their invite links keep
-              working. After this, adding anyone needs the group&apos;s approval.
-            </p>
-          </div>
-          <div>
-            <AdvanceButton
-              tripId={id}
-              to="dates"
-              confirm="Move on to picking dates? You can still add families, but it'll need everyone's approval."
-            >
-              Start picking dates →
-            </AdvanceButton>
-          </div>
-        </Card>
+      {/* Everyone sees who has confirmed their attendees, not just the
+          organizer — that is what tells the group whether waiting will change
+          anything. */}
+      {rosterOpen ? (
+        <PhaseLockPanel
+          tripId={id}
+          phase="invites"
+          nextPhase="dates"
+          rows={locks}
+          isOrganizer={ctx.isOrganizer}
+          advanceLabel="Everyone's in — start picking dates"
+          canLock={ctx.myFamily?.status === 'active'}
+        />
       ) : null}
 
       {ctx.isOrganizer ? (

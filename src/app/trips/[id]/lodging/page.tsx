@@ -2,10 +2,10 @@ import { LodgingSearchPanel, PasteLinkForm } from '@/components/lodging/AddCandi
 import { CandidateGrid, CopyPicksButton, type CandidateView } from '@/components/lodging/CandidateGrid';
 import { LodgingPrefsForm } from '@/components/lodging/LodgingPrefsForm';
 import { ResolvePrefsButton } from '@/components/lodging/ResolvePrefsButton';
-import { AdvanceButton } from '@/components/AdvanceButton';
+import { PhaseLockPanel } from '@/components/PhaseLockPanel';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext, rows } from '@/lib/queries';
+import { loadPhaseLocks, loadTripContext, rows } from '@/lib/queries';
 import { HOUSING_LABEL, pluralize } from '@/lib/format';
 import { isPhaseComplete } from '@/lib/phases';
 
@@ -24,6 +24,7 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
   const allCandidates = rows('lodging_candidates', candidatesRes);
   const allPicks = rows('lodging_picks', picksRes);
   const done = isPhaseComplete(ctx.phase, 'lodging');
+  const locks = await loadPhaseLocks(id, 'lodging', ctx);
 
   const myPrefs = allPrefs.find((p) => p.family_id === ctx.myFamily?.id);
   const prefsSettled = (ctx.trip.housing_types ?? []).length > 0;
@@ -196,18 +197,16 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
             </>
           ) : null}
 
-          {ctx.isOrganizer && !done && views.length > 0 ? (
-            <Card className="space-y-2">
-              <p className="font-medium text-text">Ready to decide?</p>
-              <p className="text-sm text-muted">
-                Move to the summary and assign families to the places you&apos;re booking.
-              </p>
-              <div>
-                <AdvanceButton tripId={id} to="finalized">
-                  Go to the summary →
-                </AdvanceButton>
-              </div>
-            </Card>
+          {!done && views.length > 0 ? (
+            <PhaseLockPanel
+              tripId={id}
+              phase="lodging"
+              nextPhase="finalized"
+              rows={locks}
+              isOrganizer={ctx.isOrganizer}
+              advanceLabel="Everyone's in — go to the summary"
+              canLock={ctx.myFamily?.status === 'active'}
+            />
           ) : null}
         </>
       ) : null}

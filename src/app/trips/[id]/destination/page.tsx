@@ -1,12 +1,11 @@
 import Image from 'next/image';
 import { ProposalBoard, type BoardItem } from '@/components/ProposalBoard';
 import { ProposePlaceForm } from '@/components/places/ProposePlaceForm';
-import { PhaseProgressPanel } from '@/components/PhaseProgressPanel';
+import { PhaseLockPanel } from '@/components/PhaseLockPanel';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
-import { loadTripContext, rows } from '@/lib/queries';
+import { loadPhaseLocks, loadTripContext, rows } from '@/lib/queries';
 import { boardBase } from '@/lib/board';
-import { phaseProgress, shouldNudgeOrganizer } from '@/lib/consensus';
 import { formatDateRange } from '@/lib/format';
 import { isPhaseComplete } from '@/lib/phases';
 
@@ -25,11 +24,10 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
   const done = isPhaseComplete(ctx.phase, 'destination');
   const canVote = !done && ctx.myFamily?.status === 'active';
 
-  // Full roster, not just active families: phaseProgress() and tally() filter to
-  // active internally, while name lookup needs everyone — otherwise a family
-  // that opts out or is removed turns into "Someone suggested" on proposals
-  // they already made.
-  const progress = phaseProgress(ctx.families, proposals, allVotes);
+  // Full roster, not just active families: tally() filters to active internally,
+  // while name lookup needs everyone — otherwise a family that opts out or is
+  // removed turns into "Someone suggested" on proposals they already made.
+  const locks = await loadPhaseLocks(id, 'destination', ctx);
   const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
 
   const items: BoardItem[] = base.map(({ proposal, item }) => ({
@@ -86,13 +84,12 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
       ) : null}
 
       {!done ? (
-        <PhaseProgressPanel
-          progress={progress}
-          myFamilyId={ctx.myFamily?.id}
-          awaitingInvite={ctx.families
-            .filter((f) => f.status === 'invited')
-            .map((f) => ({ id: f.id, name: f.name }))}
-          nudge={ctx.isOrganizer && shouldNudgeOrganizer(progress, ctx.trip.target_finalize_by)}
+        <PhaseLockPanel
+          tripId={id}
+          phase="destination"
+          rows={locks}
+          isOrganizer={ctx.isOrganizer}
+          canLock={ctx.myFamily?.status === 'active'}
         />
       ) : null}
 

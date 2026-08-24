@@ -116,53 +116,6 @@ export async function inviteFamily(
   return { ok: `Invited ${parsedName.data.name}.` };
 }
 
-/**
- * Proposes adding a family once the roster is locked. Nothing is emailed until
- * every active family approves — the spec's "do you agree to this addition".
- */
-export async function proposeFamily(
-  tripId: string,
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const parsedName = familyFormSchema.safeParse({ name: formData.get('name') });
-  if (!parsedName.success) return { error: parsedName.error.issues[0].message };
-
-  const emails = parseEmails(formData.get('emails'));
-  const parsedEmails = emailListSchema.safeParse(emails);
-  if (!parsedEmails.success) {
-    return { error: emails.length === 0 ? 'Add at least one email address.' : 'One of those is not a valid email.' };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc('propose_family', {
-    p_trip_id: tripId,
-    p_name: parsedName.data.name,
-    p_emails: parsedEmails.data,
-    p_adults: Number(formData.get('adults') ?? 0) || 0,
-    p_children: Number(formData.get('children') ?? 0) || 0,
-    p_note: (formData.get('note') as string) || undefined,
-  });
-  if (error) return { error: error.message };
-
-  revalidatePath(`/trips/${tripId}/families`);
-  return { ok: `Proposed ${parsedName.data.name}. The other families need to approve before an invite goes out.` };
-}
-
-export async function voteFamilyProposal(tripId: string, proposalId: string, approve: boolean) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc('vote_family_proposal', {
-    p_proposal_id: proposalId,
-    p_approve: approve,
-  });
-  if (error) throw new Error(error.message);
-
-  // Unanimous approval created the family and its invitation rows; send them.
-  if (data === 'approved') await flushInvitations(tripId);
-
-  revalidatePath(`/trips/${tripId}/families`);
-}
-
 export async function setFamilyStatus(tripId: string, familyId: string, status: FamilyStatus) {
   const supabase = await createClient();
   const { error } = await supabase.rpc('set_family_status', {
@@ -438,6 +391,20 @@ export async function acceptInvite(token: string) {
   if (error) throw new Error(error.message);
 
   redirect(`/trips/${data}`);
+}
+
+/**
+ * Declines an invitation outright, without joining.
+ *
+ * Deliberately requires no sign-in: asking someone to create a session in order
+ * to say "no thanks" is how you end up with no answer at all.
+ */
+export async function declineInvite(token: string) {
+  const admin = createAdminClient();
+  const { error } = await admin.rpc('decline_invitation', { p_token: token });
+  if (error) throw new Error(error.message);
+
+  redirect(`/invite/${token}/decline?done=1`);
 }
 
 /** Read-only preview of what a token points at, for the pre-sign-in screen. */

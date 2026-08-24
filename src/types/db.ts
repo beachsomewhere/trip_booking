@@ -486,125 +486,6 @@ export type Database = {
           },
         ]
       }
-      family_proposal_votes: {
-        Row: {
-          approve: boolean
-          created_at: string
-          family_id: string
-          proposal_id: string
-          trip_id: string
-          user_id: string
-        }
-        Insert: {
-          approve: boolean
-          created_at?: string
-          family_id: string
-          proposal_id: string
-          trip_id: string
-          user_id: string
-        }
-        Update: {
-          approve?: boolean
-          created_at?: string
-          family_id?: string
-          proposal_id?: string
-          trip_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "family_proposal_votes_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "family_proposal_votes_proposal_id_fkey"
-            columns: ["proposal_id"]
-            isOneToOne: false
-            referencedRelation: "family_proposals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "family_proposal_votes_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      family_proposals: {
-        Row: {
-          created_at: string
-          created_family_id: string | null
-          id: string
-          note: string | null
-          proposed_adults: number
-          proposed_by_family_id: string | null
-          proposed_by_user_id: string
-          proposed_children: number
-          proposed_emails: string[]
-          proposed_name: string
-          resolved_at: string | null
-          status: Database["public"]["Enums"]["proposal_status"]
-          trip_id: string
-        }
-        Insert: {
-          created_at?: string
-          created_family_id?: string | null
-          id?: string
-          note?: string | null
-          proposed_adults?: number
-          proposed_by_family_id?: string | null
-          proposed_by_user_id: string
-          proposed_children?: number
-          proposed_emails: string[]
-          proposed_name: string
-          resolved_at?: string | null
-          status?: Database["public"]["Enums"]["proposal_status"]
-          trip_id: string
-        }
-        Update: {
-          created_at?: string
-          created_family_id?: string | null
-          id?: string
-          note?: string | null
-          proposed_adults?: number
-          proposed_by_family_id?: string | null
-          proposed_by_user_id?: string
-          proposed_children?: number
-          proposed_emails?: string[]
-          proposed_name?: string
-          resolved_at?: string | null
-          status?: Database["public"]["Enums"]["proposal_status"]
-          trip_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "family_proposals_created_family_id_fkey"
-            columns: ["created_family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "family_proposals_proposed_by_family_id_fkey"
-            columns: ["proposed_by_family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "family_proposals_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       household_people: {
         Row: {
           birth_month: number | null
@@ -1161,6 +1042,7 @@ export type Database = {
             }
             Returns: string
           }
+      decline_invitation: { Args: { p_token: string }; Returns: string }
       delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
       ensure_household: { Args: { p_name?: string }; Returns: string }
       invite_family: {
@@ -1181,17 +1063,6 @@ export type Database = {
         }[]
       }
       my_family_id: { Args: { p_trip_id: string }; Returns: string }
-      propose_family: {
-        Args: {
-          p_adults?: number
-          p_children?: number
-          p_emails: string[]
-          p_name: string
-          p_note?: string
-          p_trip_id: string
-        }
-        Returns: string
-      }
       rename_household: { Args: { p_name: string }; Returns: undefined }
       resolve_anchor: {
         Args: { p_proposal_id: string; p_trip_id: string }
@@ -1235,10 +1106,6 @@ export type Database = {
         Returns: undefined
       }
       trip_of_family: { Args: { p_family_id: string }; Returns: string }
-      vote_family_proposal: {
-        Args: { p_approve: boolean; p_proposal_id: string }
-        Returns: Database["public"]["Enums"]["proposal_status"]
-      }
     }
     Enums: {
       family_status: "invited" | "active" | "opted_out" | "removed"

@@ -1,9 +1,9 @@
 'use client';
 
 import { useActionState, useRef, useState } from 'react';
-import { inviteFamily, proposeFamily } from '@/actions/families';
+import { inviteFamily } from '@/actions/families';
 import type { ActionState } from '@/actions/auth';
-import { Button, Field, FormError, Input, Textarea } from '@/components/ui';
+import { Button, Field, FormError, Input } from '@/components/ui';
 
 /**
  * One form, two meanings. During the `invites` phase the organizer adds
@@ -16,24 +16,27 @@ export interface KnownFamily {
   emails: string[];
 }
 
+/**
+ * Adds a family and sends their invitation, immediately.
+ *
+ * Any family can do this, at any point in the trip — these are people who
+ * already know each other, and the invitation is identical whoever sends it.
+ */
 export function InviteFamilyForm({
   tripId,
-  mode,
   known = [],
 }: {
   tripId: string;
-  mode: 'invite' | 'propose';
-  /** Families this organizer has travelled with before. */
+  /** Families you have travelled with before. */
   known?: KnownFamily[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState('');
   const [emails, setEmails] = useState('');
 
-  const action = mode === 'invite' ? inviteFamily : proposeFamily;
   const [state, submit, pending] = useActionState<ActionState, FormData>(
     async (prev, formData) => {
-      const result = await action(tripId, prev, formData);
+      const result = await inviteFamily(tripId, prev, formData);
       if (result.ok) {
         formRef.current?.reset();
         setName('');
@@ -96,21 +99,6 @@ export function InviteFamilyForm({
         </Field>
       </div>
 
-      {mode === 'propose' ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Adults" hint="Rough count is fine — they'll confirm.">
-              <Input name="adults" type="number" min={0} max={20} defaultValue={2} />
-            </Field>
-            <Field label="Kids">
-              <Input name="children" type="number" min={0} max={20} defaultValue={0} />
-            </Field>
-          </div>
-          <Field label="Why them?" hint="Shown to the other families when they vote.">
-            <Textarea name="note" maxLength={280} placeholder="They were with us in Tahoe." />
-          </Field>
-        </>
-      ) : null}
 
       <FormError message={state.error} />
       {state.ok ? (
@@ -118,11 +106,7 @@ export function InviteFamilyForm({
       ) : null}
 
       <Button type="submit" disabled={pending}>
-        {pending
-          ? 'Working…'
-          : mode === 'invite'
-            ? 'Send invite'
-            : 'Propose this family'}
+        {pending ? 'Sending…' : 'Send invite'}
       </Button>
     </form>
   );
