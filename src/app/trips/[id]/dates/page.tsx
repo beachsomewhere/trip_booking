@@ -27,7 +27,15 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
   // Full roster, not just active families: tally() filters to active internally,
   // while name lookup needs everyone — otherwise a family that opts out or is
   // removed turns into "Someone suggested" on proposals they already made.
-  const locks = await loadPhaseLocks(id, 'dates', ctx);
+  // A lock cast before the newest option appeared was a verdict on a smaller
+  // set, so it stops counting until that family looks again.
+  const newestProposalAt = proposals
+    .filter((p) => !p.withdrawn_at)
+    .map((p) => p.created_at)
+    .sort()
+    .at(-1) ?? null;
+
+  const locks = await loadPhaseLocks(id, 'dates', ctx, newestProposalAt);
   const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
 
   // Windows every proposal can live inside. When the group's ranges all overlap

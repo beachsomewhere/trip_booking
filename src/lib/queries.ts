@@ -107,27 +107,48 @@ export async function loadPhaseLocks(
   tripId: string,
   phase: TripPhase,
   ctx: TripContext,
+  /**
+   * When the newest still-live proposal appeared. A lock recorded before that
+   * was a verdict on a smaller set of options, so it no longer means "I'm done".
+   */
+  newestProposalAt?: string | null,
 ): Promise<
-  { familyId: string; name: string; locked: boolean; isMine: boolean; awaitingInvite: boolean }[]
+  {
+    familyId: string;
+    name: string;
+    locked: boolean;
+    stale: boolean;
+    isMine: boolean;
+    awaitingInvite: boolean;
+  }[]
 > {
   const supabase = await createClient();
   const { data } = await supabase
     .from('phase_signoffs')
-    .select('family_id')
+    .select('family_id, signed_off_at')
     .eq('trip_id', tripId)
     .eq('phase', phase);
 
-  const lockedIds = new Set((data ?? []).map((r) => r.family_id));
+  const signedAt = new Map((data ?? []).map((r) => [r.family_id, r.signed_off_at]));
 
   return ctx.families
     .filter((f) => f.status === 'active' || f.status === 'invited')
-    .map((f) => ({
-      familyId: f.id,
-      name: f.name,
-      locked: lockedIds.has(f.id),
-      isMine: f.id === ctx.myFamily?.id,
-      awaitingInvite: f.status === 'invited',
-    }));
+    .map((f) => {
+      const at = signedAt.get(f.id) ?? null;
+      // Staleness is computed, never written. If the new proposal is withdrawn,
+      // the original lock silently becomes valid again — which is right, since
+      // the family's verdict on the remaining options never changed.
+      const stale = Boolean(at && newestProposalAt && at < newestProposalAt);
+
+      return {
+        familyId: f.id,
+        name: f.name,
+        locked: Boolean(at) && !stale,
+        stale,
+        isMine: f.id === ctx.myFamily?.id,
+        awaitingInvite: f.status === 'invited',
+      };
+    });
 }
 
 export function familyName(families: { id: string; name: string }[], id: string | null): string {

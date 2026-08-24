@@ -27,7 +27,15 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
   // Full roster, not just active families: tally() filters to active internally,
   // while name lookup needs everyone — otherwise a family that opts out or is
   // removed turns into "Someone suggested" on proposals they already made.
-  const locks = await loadPhaseLocks(id, 'destination', ctx);
+  // A lock cast before the newest option appeared was a verdict on a smaller
+  // set, so it stops counting until that family looks again.
+  const newestProposalAt = proposals
+    .filter((p) => !p.withdrawn_at)
+    .map((p) => p.created_at)
+    .sort()
+    .at(-1) ?? null;
+
+  const locks = await loadPhaseLocks(id, 'destination', ctx, newestProposalAt);
   const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
 
   const items: BoardItem[] = base.map(({ proposal, item }) => ({

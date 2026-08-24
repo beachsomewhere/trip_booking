@@ -11,6 +11,8 @@ export interface LockRow {
   familyId: string;
   name: string;
   locked: boolean;
+  /** Locked, but before options were added that they have not seen. */
+  stale: boolean;
   isMine: boolean;
   /** Invited but never joined — they cannot lock anything in. */
   awaitingInvite: boolean;
@@ -106,6 +108,25 @@ export function PhaseLockPanel({
                 <span className="text-clay-600">invite not accepted</span>
               ) : r.locked ? (
                 <span className="text-moss-600">locked in</span>
+              ) : r.stale ? (
+                <>
+                  <span className="text-clay-600">hasn&apos;t seen the new options</span>
+                  {!r.isMine ? (
+                    <button
+                      type="button"
+                      disabled={pending || reminded.includes(r.familyId)}
+                      onClick={() =>
+                        start(async () => {
+                          await remindFamily(tripId, r.familyId, phase);
+                          setReminded((x) => [...x, r.familyId]);
+                        })
+                      }
+                      className="text-accent underline underline-offset-4 disabled:opacity-50 disabled:no-underline"
+                    >
+                      {reminded.includes(r.familyId) ? 'Reminded' : 'Remind'}
+                    </button>
+                  ) : null}
+                </>
               ) : (
                 <>
                   <span className="text-muted">not yet</span>
@@ -168,10 +189,12 @@ export function PhaseLockPanel({
                   })
                 }
               >
-                Lock in my family
+                {mine.stale ? 'Lock in again' : 'Lock in my family'}
               </Button>
               <span className="text-sm text-muted">
-                Tells everyone you&apos;re done with this step.
+                {mine.stale
+                  ? 'Someone added options after you locked in — take a look, then lock in again.'
+                  : "Tells everyone you're done with this step."}
               </span>
             </>
           )}

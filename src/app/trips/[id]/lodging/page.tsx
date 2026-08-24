@@ -24,7 +24,10 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
   const allCandidates = rows('lodging_candidates', candidatesRes);
   const allPicks = rows('lodging_picks', picksRes);
   const done = isPhaseComplete(ctx.phase, 'lodging');
-  const locks = await loadPhaseLocks(id, 'lodging', ctx);
+  // Same rule as the voting steps: a lock predating the newest candidate was a
+  // verdict on a shorter list.
+  const newestCandidateAt = allCandidates.map((c) => c.created_at).sort().at(-1) ?? null;
+  const locks = await loadPhaseLocks(id, 'lodging', ctx, newestCandidateAt);
 
   const myPrefs = allPrefs.find((p) => p.family_id === ctx.myFamily?.id);
   const prefsSettled = (ctx.trip.housing_types ?? []).length > 0;
