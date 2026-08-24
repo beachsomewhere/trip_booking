@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient, getUser } from '@/lib/supabase/server';
 import type { ActionState } from '@/actions/auth';
-import type { TripPhase } from '@/lib/phases';
+import { phaseHref, type TripPhase } from '@/lib/phases';
 
 const createSchema = z.object({
   name: z.string().trim().min(1, 'Give the trip a name.').max(120),
@@ -44,11 +44,19 @@ export async function createTrip(_prev: ActionState, formData: FormData): Promis
   redirect(`/trips/${data}/families`);
 }
 
+/**
+ * Moves the trip to another step and takes the caller there.
+ *
+ * The navigation is the point: advancing without it leaves you on the screen
+ * you just finished, with only the stepper hinting that anything happened.
+ */
 export async function advancePhase(tripId: string, to: TripPhase) {
   const supabase = await createClient();
   const { error } = await supabase.rpc('advance_phase', { p_trip_id: tripId, p_to: to });
   if (error) throw new Error(error.message);
+
   revalidatePath(`/trips/${tripId}`, 'layout');
+  redirect(phaseHref(tripId, to));
 }
 
 export async function setTripTarget(tripId: string, target: string) {

@@ -1,10 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient, getUser } from '@/lib/supabase/server';
 import type { ActionState } from '@/actions/auth';
 import type { VoteChoice } from '@/lib/consensus';
+import { phaseHref, type TripPhase } from '@/lib/phases';
 
 /**
  * Shared machinery for the three "a family proposes, the others vote" phases.
@@ -85,7 +87,20 @@ export async function withdrawProposal(kind: ProposalKind, tripId: string, propo
   revalidateTrip(tripId);
 }
 
-/** Organizer picks the winner; the RPC writes it onto the trip and advances. */
+/** Which phase each resolve RPC leaves the trip in — mirrors the SQL. */
+const RESOLVES_INTO: Record<ProposalKind, TripPhase> = {
+  dates: 'destination',
+  destination: 'anchor',
+  anchor: 'lodging',
+};
+
+/**
+ * Organizer picks the winner; the RPC writes it onto the trip and advances.
+ *
+ * Then move them to the step that just opened. Without this the trip advances
+ * underneath you while you keep staring at the finished screen — the stepper
+ * updates but the page does not, which reads like nothing happened.
+ */
 export async function resolveProposal(kind: ProposalKind, tripId: string, proposalId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc(TABLES[kind].resolve, {
@@ -93,7 +108,9 @@ export async function resolveProposal(kind: ProposalKind, tripId: string, propos
     p_proposal_id: proposalId,
   });
   if (error) throw new Error(error.message);
+
   revalidateTrip(tripId);
+  redirect(phaseHref(tripId, RESOLVES_INTO[kind]));
 }
 
 // ---------------------------------------------------------------------------
