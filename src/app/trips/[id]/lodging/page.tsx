@@ -14,15 +14,17 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
   const ctx = await loadTripContext(id);
   const supabase = await createClient();
 
-  const [prefsRes, candidatesRes, picksRes] = await Promise.all([
+  const [prefsRes, candidatesRes, picksRes, commentsRes] = await Promise.all([
     supabase.from('lodging_prefs').select('*').eq('trip_id', id),
     supabase.from('lodging_candidates').select('*').eq('trip_id', id).order('created_at'),
     supabase.from('lodging_picks').select('*').eq('trip_id', id),
+    supabase.from('lodging_comments').select('*').eq('trip_id', id),
   ]);
 
   const allPrefs = rows('lodging_prefs', prefsRes);
   const allCandidates = rows('lodging_candidates', candidatesRes);
   const allPicks = rows('lodging_picks', picksRes);
+  const allComments = rows('lodging_comments', commentsRes);
   const done = isPhaseComplete(ctx.phase, 'lodging');
   // Same rule as the voting steps: a lock predating the newest candidate was a
   // verdict on a shorter list.
@@ -58,6 +60,13 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
           canRemove: c.added_by_family_id === ctx.myFamily?.id || ctx.isOrganizer,
           pickedByNames: picksFor.map((p) => nameOf(p.family_id)),
           myRank: picksFor.find((p) => p.family_id === ctx.myFamily?.id)?.rank ?? null,
+          comments: allComments
+            .filter((m) => m.candidate_id === c.id)
+            .map((m) => ({ familyName: nameOf(m.family_id), note: m.note })),
+          myComment:
+            allComments.find(
+              (m) => m.candidate_id === c.id && m.family_id === ctx.myFamily?.id,
+            )?.note ?? '',
         } satisfies CandidateView,
       };
     })

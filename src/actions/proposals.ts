@@ -74,6 +74,33 @@ export async function castVote(
   revalidateTrip(tripId);
 }
 
+/**
+ * Explains a vote, after the fact.
+ *
+ * Separate from casting the vote on purpose: making people justify a click
+ * before it registers is friction on the one action this app most needs to be
+ * effortless. Vote first, explain if it helps.
+ */
+export async function saveVoteNote(
+  kind: ProposalKind,
+  tripId: string,
+  proposalId: string,
+  note: string,
+) {
+  const familyId = await requireMyFamily(tripId);
+  const supabase = await createClient();
+
+  const trimmed = note.trim().slice(0, 280);
+
+  const { error } = await (supabase.from(TABLES[kind].votes) as ReturnType<typeof supabase.from>)
+    .update({ note: trimmed || null })
+    .eq('proposal_id', proposalId)
+    .eq('family_id', familyId);
+
+  if (error) throw new Error(error.message);
+  revalidateTrip(tripId);
+}
+
 export async function withdrawProposal(kind: ProposalKind, tripId: string, proposalId: string) {
   const supabase = await createClient();
   const { error } = await (

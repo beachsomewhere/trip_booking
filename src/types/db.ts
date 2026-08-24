@@ -201,6 +201,7 @@ export type Database = {
         Row: {
           choice: Database["public"]["Enums"]["vote_choice"]
           family_id: string
+          note: string | null
           proposal_id: string
           trip_id: string
           updated_at: string
@@ -209,6 +210,7 @@ export type Database = {
         Insert: {
           choice: Database["public"]["Enums"]["vote_choice"]
           family_id: string
+          note?: string | null
           proposal_id: string
           trip_id: string
           updated_at?: string
@@ -217,6 +219,7 @@ export type Database = {
         Update: {
           choice?: Database["public"]["Enums"]["vote_choice"]
           family_id?: string
+          note?: string | null
           proposal_id?: string
           trip_id?: string
           updated_at?: string
@@ -313,6 +316,7 @@ export type Database = {
         Row: {
           choice: Database["public"]["Enums"]["vote_choice"]
           family_id: string
+          note: string | null
           proposal_id: string
           trip_id: string
           updated_at: string
@@ -321,6 +325,7 @@ export type Database = {
         Insert: {
           choice: Database["public"]["Enums"]["vote_choice"]
           family_id: string
+          note?: string | null
           proposal_id: string
           trip_id: string
           updated_at?: string
@@ -329,6 +334,7 @@ export type Database = {
         Update: {
           choice?: Database["public"]["Enums"]["vote_choice"]
           family_id?: string
+          note?: string | null
           proposal_id?: string
           trip_id?: string
           updated_at?: string
@@ -723,6 +729,58 @@ export type Database = {
           },
           {
             foreignKeyName: "lodging_candidates_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lodging_comments: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          family_id: string
+          id: string
+          note: string
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          family_id: string
+          id?: string
+          note: string
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          family_id?: string
+          id?: string
+          note?: string
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lodging_comments_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "lodging_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lodging_comments_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lodging_comments_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"

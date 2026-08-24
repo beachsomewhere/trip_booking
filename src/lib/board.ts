@@ -8,9 +8,12 @@ import type { BoardItem } from '@/components/ProposalBoard';
  * Sorted by support so the front-runner is the first thing a late-arriving
  * family sees — that is what makes "just agree with the Barnes" a one-tap path.
  */
-export function boardBase<P extends MinimalProposal & { note?: string | null }>(
+export function boardBase<
+  P extends MinimalProposal & { note?: string | null },
+  V extends MinimalVote & { note?: string | null },
+>(
   proposals: P[],
-  votes: MinimalVote[],
+  votes: V[],
   families: MinimalFamily[],
   myFamilyId: string | null,
 ): { proposal: P; item: Omit<BoardItem, 'body'> }[] {
@@ -44,6 +47,14 @@ export function boardBase<P extends MinimalProposal & { note?: string | null }>(
           // stands — the group has to change the option, not out-vote them.
           blocked: t.no > 0,
           myVote,
+          // Reasons, so "less preferred" is something the group can act on
+          // rather than something they have to go and ask about.
+          reasons: votes
+            .filter((v) => v.proposal_id === proposal.id && v.note)
+            .map((v) => ({ familyName: nameOf(v.family_id), choice: v.choice, note: v.note! })),
+          myNote:
+            votes.find((v) => v.proposal_id === proposal.id && v.family_id === myFamilyId)?.note ??
+            '',
           isLeader: front?.proposalId === proposal.id,
         } satisfies Omit<BoardItem, 'body'>,
       };

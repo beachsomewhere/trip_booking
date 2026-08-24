@@ -8,6 +8,7 @@ import {
   StatusButton,
 } from '@/components/families/FamilyControls';
 import { PhaseLockPanel } from '@/components/PhaseLockPanel';
+import { MovedOnBanner } from '@/components/MovedOnBanner';
 import { DeleteTripButton } from '@/components/DeleteTripButton';
 import { CopyLink } from '@/components/CopyLink';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
@@ -46,6 +47,10 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="space-y-6">
+      {!rosterOpen && ctx.phase !== 'finalized' ? (
+        <MovedOnBanner tripId={id} currentPhase={ctx.phase} />
+      ) : null}
+
       <PageTitle
         title="Who's coming"
         subtitle={

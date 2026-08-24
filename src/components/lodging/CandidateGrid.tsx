@@ -1,8 +1,8 @@
 'use client';
 
-import { useTransition } from 'react';
-import { copyPicksFrom, removeCandidate, togglePick } from '@/actions/lodging';
-import { Badge, Button, Card, cx } from '@/components/ui';
+import { useState, useTransition } from 'react';
+import { copyPicksFrom, removeCandidate, saveLodgingComment, togglePick } from '@/actions/lodging';
+import { Badge, Button, Card, Input, cx } from '@/components/ui';
 import { listFamilies } from '@/lib/format';
 
 export interface CandidateView {
@@ -19,6 +19,9 @@ export interface CandidateView {
   canRemove: boolean;
   pickedByNames: string[];
   myRank: number | null;
+  /** What each family said about this place, where they said anything. */
+  comments: { familyName: string; note: string }[];
+  myComment: string;
 }
 
 export function CandidateGrid({
@@ -64,6 +67,7 @@ function CandidateCard({
   headcount: number;
 }) {
   const [pending, start] = useTransition();
+  const [note, setNote] = useState(c.myComment);
   const picked = c.myRank !== null;
   const atLimit = !picked && pickCount >= 5;
 
@@ -101,6 +105,45 @@ function CandidateCard({
 
         <p className="mt-1 text-xs text-muted">Added by {c.addedByName}</p>
       </div>
+
+      {c.comments.length > 0 ? (
+        <ul className="space-y-1 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
+          {c.comments.map((m) => (
+            <li key={m.familyName}>
+              <span className="font-medium text-text">{m.familyName}:</span> {m.note}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {/* Say what you think of a place whether or not you shortlisted it —
+          "no swim-up bar" saves four other families looking it up. */}
+      {canPick ? (
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a comment (optional)"
+              maxLength={280}
+              aria-label={`Comment on ${c.name}`}
+            />
+          </div>
+          {note !== c.myComment ? (
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() =>
+                start(() => {
+                  void saveLodgingComment(tripId, c.id, note);
+                })
+              }
+            >
+              Save
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         {canPick ? (

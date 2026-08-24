@@ -1,6 +1,7 @@
 import { ProposalBoard, type BoardItem } from '@/components/ProposalBoard';
 import { ProposeDatesForm } from '@/components/dates/ProposeDatesForm';
 import { PhaseLockPanel } from '@/components/PhaseLockPanel';
+import { MovedOnBanner } from '@/components/MovedOnBanner';
 import { AdvanceButton } from '@/components/AdvanceButton';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
@@ -105,6 +106,10 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
               : 'Mark the week you actually want as preferred. Only suggest another if none of these are it.'
         }
       />
+
+      {done && ctx.phase !== 'finalized' ? (
+        <MovedOnBanner tripId={id} currentPhase={ctx.phase} />
+      ) : null}
 
       {done && ctx.trip.agreed_start_date && ctx.trip.agreed_end_date ? (
         <Card className="flex flex-wrap items-center justify-between gap-2">

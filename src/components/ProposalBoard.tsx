@@ -1,8 +1,14 @@
 'use client';
 
-import { useTransition, type ReactNode } from 'react';
-import { castVote, resolveProposal, withdrawProposal, type ProposalKind } from '@/actions/proposals';
-import { Badge, Button, Card, cx } from '@/components/ui';
+import { useState, useTransition, type ReactNode } from 'react';
+import {
+  castVote,
+  resolveProposal,
+  saveVoteNote,
+  withdrawProposal,
+  type ProposalKind,
+} from '@/actions/proposals';
+import { Badge, Button, Card, Input, cx } from '@/components/ui';
 import { listFamilies } from '@/lib/format';
 import type { VoteChoice } from '@/lib/consensus';
 
@@ -23,6 +29,9 @@ export interface BoardItem {
   /** Someone said this doesn't work for them, so it cannot simply be chosen. */
   blocked: boolean;
   myVote: VoteChoice | null;
+  /** Why each family voted the way it did, where they said. */
+  reasons: { familyName: string; choice: VoteChoice; note: string }[];
+  myNote: string;
   isLeader: boolean;
 }
 
@@ -96,6 +105,7 @@ function ProposalCard({
   resolveLabel: string;
 }) {
   const [pending, start] = useTransition();
+  const [note, setNote] = useState(item.myNote);
 
   const vote = (choice: VoteChoice) =>
     start(() => {
@@ -131,6 +141,16 @@ function ProposalCard({
         {item.yes === 0 && item.maybe === 0 && item.no === 0 ? <span>No votes yet</span> : null}
       </div>
 
+      {item.reasons.length > 0 ? (
+        <ul className="space-y-1 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
+          {item.reasons.map((r) => (
+            <li key={r.familyName}>
+              <span className="font-medium text-text">{r.familyName}:</span> {r.note}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {canVote ? (
         <div className="flex flex-wrap gap-2">
           {CHOICES.map((c) => (
@@ -144,6 +164,40 @@ function ProposalCard({
               {c.label}
             </Button>
           ))}
+        </div>
+      ) : null}
+
+      {/* Explaining a vote is optional and comes after it. "Less preferred"
+          tells the group there is a problem but not what it is, and the asking
+          then happens somewhere this app cannot see. */}
+      {canVote && item.myVote ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-48 flex-1">
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={
+                item.myVote === 'yes'
+                  ? 'Why this one? (optional)'
+                  : 'Why not? — helps the group work around it'
+              }
+              maxLength={280}
+              aria-label="Reason for your vote"
+            />
+          </div>
+          {note !== item.myNote ? (
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() =>
+                start(() => {
+                  void saveVoteNote(kind, tripId, item.id, note);
+                })
+              }
+            >
+              Save
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

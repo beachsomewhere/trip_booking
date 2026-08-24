@@ -137,6 +137,45 @@ export async function addManualCandidate(
   return { ok: 'Added to the list for everyone to look at.' };
 }
 
+/**
+ * A family's comment on one place. Empty clears it.
+ *
+ * Deliberately not tied to shortlisting: the most useful comment is usually
+ * about a place you did NOT pick, and explaining why saves everyone else
+ * evaluating it again.
+ */
+export async function saveLodgingComment(
+  tripId: string,
+  candidateId: string,
+  note: string,
+) {
+  const familyId = await myFamily(tripId);
+  const supabase = await createClient();
+  const trimmed = note.trim().slice(0, 280);
+
+  if (!trimmed) {
+    await supabase
+      .from('lodging_comments')
+      .delete()
+      .eq('candidate_id', candidateId)
+      .eq('family_id', familyId);
+  } else {
+    const { error } = await supabase.from('lodging_comments').upsert(
+      {
+        trip_id: tripId,
+        candidate_id: candidateId,
+        family_id: familyId,
+        note: trimmed,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'candidate_id,family_id' },
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  revalidateTrip(tripId);
+}
+
 export async function removeCandidate(tripId: string, candidateId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from('lodging_candidates').delete().eq('id', candidateId);

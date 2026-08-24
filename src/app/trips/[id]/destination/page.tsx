@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { ProposalBoard, type BoardItem } from '@/components/ProposalBoard';
 import { ProposePlaceForm } from '@/components/places/ProposePlaceForm';
 import { PhaseLockPanel } from '@/components/PhaseLockPanel';
+import { MovedOnBanner } from '@/components/MovedOnBanner';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
 import { loadPhaseLocks, loadTripContext, rows } from '@/lib/queries';
@@ -104,6 +105,10 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
           Going {formatDateRange(ctx.trip.agreed_start_date, ctx.trip.agreed_end_date)} ·{' '}
           {ctx.headcount} people
         </p>
+      ) : null}
+
+      {done && ctx.phase !== 'finalized' ? (
+        <MovedOnBanner tripId={id} currentPhase={ctx.phase} />
       ) : null}
 
       {done && ctx.trip.destination_name ? (
