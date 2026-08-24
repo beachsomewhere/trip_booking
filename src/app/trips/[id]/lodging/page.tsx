@@ -2,6 +2,11 @@ import { PasteLinkForm } from '@/components/lodging/AddCandidatePanels';
 import { CandidateGrid, CopyPicksButton, type CandidateView } from '@/components/lodging/CandidateGrid';
 import { LodgingPrefsForm } from '@/components/lodging/LodgingPrefsForm';
 import { ResolvePrefsButton } from '@/components/lodging/ResolvePrefsButton';
+import {
+  SleepingArrangement,
+  type ArrangementRow,
+  type TogetherPref,
+} from '@/components/lodging/SleepingArrangement';
 import { PhaseLockPanel } from '@/components/PhaseLockPanel';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
@@ -41,12 +46,31 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
   const locks = await loadPhaseLocks(id, 'lodging', ctx, newestCandidateAt);
 
   const myPrefs = allPrefs.find((p) => p.family_id === ctx.myFamily?.id);
+
+  // Who needs what, family by family. Anyone shopping needs this more than they
+  // need the group's resolved answer: the shared place has to fit the families
+  // actually sharing, not everyone invited.
+  const arrangement: ArrangementRow[] = ctx.votingFamilies.map((f) => ({
+    familyId: f.id,
+    name: f.name,
+    isMine: f.id === ctx.myFamily?.id,
+    headcount: f.family_attendees.length,
+    pref:
+      (allPrefs.find((p) => p.family_id === f.id)?.stay_together_pref as TogetherPref | undefined) ??
+      null,
+  }));
+
   // A family looking for its own place is shopping for its own headcount, not
   // the group's — showing "sleeps 9 needed" to a family of three who said they
-  // want their own place is worse than showing nothing.
+  // want their own place is worse than showing nothing. Everyone else is
+  // shopping for the families actually sharing, which is not the same as the
+  // whole trip once anyone has peeled off.
   const lookingAlone = myPrefs?.stay_together_pref === 'prefer_separate';
   const myHeadcount = ctx.myFamily?.family_attendees.length ?? 0;
-  const capacityNeeded = lookingAlone && myHeadcount > 0 ? myHeadcount : ctx.headcount;
+  const sharedHeadcount = arrangement
+    .filter((r) => r.pref !== 'prefer_separate')
+    .reduce((n, r) => n + r.headcount, 0);
+  const capacityNeeded = lookingAlone && myHeadcount > 0 ? myHeadcount : sharedHeadcount;
   const prefsSettled = (ctx.trip.housing_types ?? []).length > 0;
   const familiesWithPrefs = allPrefs.length;
 
@@ -130,11 +154,7 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
               {(ctx.trip.housing_types ?? []).map((t) => HOUSING_LABEL[t]).join(', ')} ·{' '}
               {ctx.trip.stay_together ? 'together' : 'separate OK'}
             </Badge>
-          ) : (
-            <span className="text-sm text-muted">
-              {familiesWithPrefs} of {ctx.votingFamilies.length} answered
-            </span>
-          )}
+          ) : null}
         </div>
 
         {!done && ctx.myFamily?.status === 'active' ? (
@@ -146,6 +166,11 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
             />
           </Card>
         ) : null}
+
+        {/* Visible to everyone, before and after the group's answer is
+            resolved: "the Barnes want one roof, the Kurz want their own" is
+            what tells you what to go looking for. */}
+        <SleepingArrangement rows={arrangement} />
 
         {ctx.isOrganizer && !prefsSettled && familiesWithPrefs > 0 ? (
           <ResolvePrefsButton tripId={id} />

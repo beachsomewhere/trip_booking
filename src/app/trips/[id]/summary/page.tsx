@@ -1,5 +1,10 @@
 import Link from 'next/link';
 import { AssignUnits, UnbookButton, type AssignableCandidate } from '@/components/lodging/AssignUnits';
+import {
+  SleepingArrangement,
+  type ArrangementRow,
+  type TogetherPref,
+} from '@/components/lodging/SleepingArrangement';
 import { AdvanceButton } from '@/components/AdvanceButton';
 import { Badge, Card, EmptyState, PageTitle } from '@/components/ui';
 import { createClient } from '@/lib/supabase/server';
@@ -11,15 +16,29 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
   const ctx = await loadTripContext(id);
   const supabase = await createClient();
 
-  const [candidatesRes, picksRes, selectionsRes] = await Promise.all([
+  const [candidatesRes, picksRes, selectionsRes, prefsRes] = await Promise.all([
     supabase.from('lodging_candidates').select('*').eq('trip_id', id),
     supabase.from('lodging_picks').select('*').eq('trip_id', id),
     supabase.from('lodging_selections').select('*').eq('trip_id', id),
+    supabase.from('lodging_prefs').select('*').eq('trip_id', id),
   ]);
 
   const allCandidates = rows('lodging_candidates', candidatesRes);
   const allPicks = rows('lodging_picks', picksRes);
   const allSelections = rows('lodging_selections', selectionsRes);
+  const allPrefs = rows('lodging_prefs', prefsRes);
+
+  // Who still needs a bed in the shared booking, and who is handling their own.
+  // The organizer is assigning families to places directly below this.
+  const arrangement: ArrangementRow[] = ctx.votingFamilies.map((f) => ({
+    familyId: f.id,
+    name: f.name,
+    isMine: f.id === ctx.myFamily?.id,
+    headcount: f.family_attendees.length,
+    pref:
+      (allPrefs.find((p) => p.family_id === f.id)?.stay_together_pref as TogetherPref | undefined) ??
+      null,
+  }));
 
   // Scope the join table to this trip's selections. RLS would let a member of
   // two trips see both, and an unscoped read would mix them together here.
@@ -162,6 +181,8 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
             Not placed anywhere yet: {unassigned.map((f) => f.name).join(', ')}
           </p>
         ) : null}
+
+        <SleepingArrangement rows={arrangement} />
       </section>
 
       {/* -- Organizer assignment ------------------------------------------- */}

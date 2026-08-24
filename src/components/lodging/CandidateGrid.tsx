@@ -104,7 +104,7 @@ function CandidateCard({
           ]
             .filter(Boolean)
             .join(' · ') ||
-            `No capacity listed — ${headcountIsMineOnly ? 'your family is' : 'your group is'} ${headcount}`}
+            `No capacity listed — needs to sleep ${headcount}${headcountIsMineOnly ? ' (just your family)' : ''}`}
         </p>
 
         {c.description ? (
