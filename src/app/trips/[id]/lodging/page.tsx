@@ -1,4 +1,4 @@
-import { LodgingSearchPanel, PasteLinkForm } from '@/components/lodging/AddCandidatePanels';
+import { PasteLinkForm } from '@/components/lodging/AddCandidatePanels';
 import { CandidateGrid, CopyPicksButton, type CandidateView } from '@/components/lodging/CandidateGrid';
 import { LodgingPrefsForm } from '@/components/lodging/LodgingPrefsForm';
 import { ResolvePrefsButton } from '@/components/lodging/ResolvePrefsButton';
@@ -70,6 +70,8 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
           priceNote: c.price_note,
           capacityNote: c.capacity_note,
           rating: c.rating,
+          bedrooms: c.bedrooms,
+          description: c.description,
           source: c.source,
           addedByName: nameOf(c.added_by_family_id),
           canRemove: c.added_by_family_id === ctx.myFamily?.id || ctx.isOrganizer,
@@ -201,25 +203,16 @@ export default async function LodgingPage({ params }: { params: Promise<{ id: st
 
           {!done && ctx.myFamily?.status === 'active' ? (
             <>
-              <section className="space-y-3">
-                <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-                  Nearby places
-                </h2>
-                <LodgingSearchPanel
-                  tripId={id}
-                  headcount={capacityNeeded}
-                  groupTypes={ctx.trip.housing_types ?? []}
-                  remaining={remainingSuggestions}
-                  existingPlaceIds={allCandidates
-                    .map((c) => c.google_place_id)
-                    .filter((x): x is string => Boolean(x))}
-                />
-              </section>
 
               <section className="space-y-3">
                 <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-                  Found something yourself?
+                  Add a place
                 </h2>
+                <p className="text-sm text-muted">
+                  {remainingSuggestions > 0
+                    ? `Paste a link and we'll read what we can off the page. ${remainingSuggestions} left — look through what's already here first.`
+                    : "You've suggested your three."}
+                </p>
                 <Card>
                   {remainingSuggestions > 0 ? (
                     <PasteLinkForm tripId={id} />

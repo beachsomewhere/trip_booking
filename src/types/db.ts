@@ -668,8 +668,10 @@ export type Database = {
         Row: {
           added_by_family_id: string | null
           address: string | null
+          bedrooms: string | null
           capacity_note: string | null
           created_at: string
+          description: string | null
           google_place_id: string | null
           housing_type: Database["public"]["Enums"]["housing_type"] | null
           id: string
@@ -686,8 +688,10 @@ export type Database = {
         Insert: {
           added_by_family_id?: string | null
           address?: string | null
+          bedrooms?: string | null
           capacity_note?: string | null
           created_at?: string
+          description?: string | null
           google_place_id?: string | null
           housing_type?: Database["public"]["Enums"]["housing_type"] | null
           id?: string
@@ -704,8 +708,10 @@ export type Database = {
         Update: {
           added_by_family_id?: string | null
           address?: string | null
+          bedrooms?: string | null
           capacity_note?: string | null
           created_at?: string
+          description?: string | null
           google_place_id?: string | null
           housing_type?: Database["public"]["Enums"]["housing_type"] | null
           id?: string

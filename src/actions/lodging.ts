@@ -49,8 +49,35 @@ export async function saveLodgingPrefs(
   );
   if (error) return { error: error.message };
 
+  // A family sorting out its own place has nothing to agree with the group
+  // about, so waiting on them would stall everyone for no reason. Choosing it
+  // locks them in; changing away puts the decision back on them.
+  if (together === 'prefer_separate') {
+    await supabase.from('phase_signoffs').upsert(
+      {
+        trip_id: tripId,
+        phase: 'lodging' as const,
+        family_id: familyId,
+        signed_off_at: new Date().toISOString(),
+      },
+      { onConflict: 'trip_id,phase,family_id' },
+    );
+  } else {
+    await supabase
+      .from('phase_signoffs')
+      .delete()
+      .eq('trip_id', tripId)
+      .eq('phase', 'lodging')
+      .eq('family_id', familyId);
+  }
+
   revalidateTrip(tripId);
-  return { ok: 'Saved.' };
+  return {
+    ok:
+      together === 'prefer_separate'
+        ? "Saved. You're sorting your own place, so the group won't wait on you here."
+        : 'Saved.',
+  };
 }
 
 /** Organizer collapses everyone's preferences into the group's answer. */
@@ -73,6 +100,8 @@ export interface CandidateInput {
   rating?: number | null;
   priceNote?: string | null;
   capacityNote?: string | null;
+  bedrooms?: string | null;
+  description?: string | null;
   housingType?: HousingType | null;
 }
 
@@ -93,6 +122,8 @@ export async function addCandidate(tripId: string, input: CandidateInput) {
     rating: input.rating ?? null,
     price_note: input.priceNote ?? null,
     capacity_note: input.capacityNote ?? null,
+    bedrooms: input.bedrooms ?? null,
+    description: input.description ?? null,
     housing_type: input.housingType ?? null,
     added_by_family_id: familyId,
   });
@@ -109,6 +140,8 @@ const manualSchema = z.object({
   priceNote: z.string().trim().max(120).optional(),
   photoUrl: z.string().trim().optional(),
   address: z.string().trim().max(240).optional(),
+  bedrooms: z.string().trim().max(120).optional(),
+  description: z.string().trim().max(280).optional(),
 });
 
 export async function addManualCandidate(
@@ -128,6 +161,8 @@ export async function addManualCandidate(
       photoUrl: parsed.data.photoUrl || null,
       capacityNote: parsed.data.capacityNote || null,
       priceNote: parsed.data.priceNote || null,
+      bedrooms: parsed.data.bedrooms || null,
+      description: parsed.data.description || null,
       housingType: 'short_term_rental',
     });
   } catch (err) {

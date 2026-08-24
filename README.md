@@ -2,10 +2,12 @@
 
 A web app for getting a group from *"we should go somewhere"* to an actual booking in about a week.
 
-Group trips stall on four sequential decisions — **when → where → what area → which place** — and each
-one stalls the same way: nobody wants to be the one to decide, and one slow family blocks everyone.
-So the app models all four identically. A family proposes, everyone else sees *"The Barnes suggested
-Keystone"* and answers in one tap. The organizer can move ahead without a family that has gone quiet.
+Group trips stall on a run of sequential decisions — **who's coming → when → where → which place** — and
+each one stalls the same way: nobody wants to be the one to decide, and one slow family blocks everyone.
+So the app models them identically. A family proposes, everyone else sees *"The Barnes suggested
+Keystone"* and answers in one tap. Every family then **locks the step in**, which is a different act from
+voting: a vote says what you want, a lock says you are finished. The organizer can move ahead without a
+family that has gone quiet — but never silently.
 
 The unit of participation is a **family**, not a person: several emails (spouses) share one entry, one
 vote, and one headcount with ages.
@@ -57,6 +59,7 @@ npm run dev         # dev server
 npm run build       # production build
 npm run typecheck   # tsc --noEmit
 npm run lint        # eslint
+npm test            # link-unfurl extraction tests (fixtures, no network)
 supabase db reset   # re-apply schema + seed (wipes local data and sessions)
 ```
 
@@ -64,16 +67,21 @@ supabase db reset   # re-apply schema + seed (wipes local data and sessions)
 
 ## How it fits together
 
-**One state machine.** `trips.phase` runs `invites → dates → destination → anchor → lodging → finalized`
-and decides what every screen shows. `src/lib/phases.ts` owns the ordering and labels.
+**One state machine.** `trips.phase` runs `invites → dates → destination → lodging → finalized` and
+decides what every screen shows. `src/lib/phases.ts` owns the ordering and labels, and maps the retired
+`anchor` phase onto `lodging` so trips created before it was dropped still open.
 
 **One consensus implementation.** `src/lib/consensus.ts` is pure functions — tallying, front-runner,
 "3 of 4 families are in", and when to nudge the organizer. Both the server actions and the UI call it,
 which is why the progress bar and the organizer's prompt can never disagree.
 
-**Four phases, one component.** Dates, destination, area, and lodging share `ProposalBoard` and the
-phase-parameterized actions in `src/actions/proposals.ts`. Adding a fifth voting step is a table plus a
+**Three phases, one component.** Dates, destination, and lodging share `ProposalBoard` and the
+phase-parameterized actions in `src/actions/proposals.ts`. Adding a fourth voting step is a table plus a
 `body` renderer, not a new feature.
+
+**Households outlive trips.** Birth month and year are collected once and stored on a household that
+persists across trips, so the second invitation asks only *who is coming this time* — not everyone's
+birthday again. Ages are computed against the trip's own start date, never stored.
 
 **Security lives in the database.** Every table has RLS. Anything a client must not be able to forge —
 creating a trip, redeeming an invite token, approving a family addition, advancing the phase, removing a
@@ -96,42 +104,45 @@ Two things about Postgres that are easy to get wrong and are worth knowing befor
 This is the one place where the product is shaped by what APIs actually exist.
 
 - **Airbnb and VRBO have no public API.** Official access is partner-only, for channel managers and
-  property-management systems. So short-term rentals get in by someone **pasting a link**, which the app
+  property-management systems. So places to stay get in by someone **pasting a link**, which the app
   unfurls into a card. Those sites also fingerprint server-side fetches, so unfurling succeeds often but
   never reliably — the form always falls back to typing the details in, and that path is a first-class
   one, not an error state.
-- **Google Places returns no capacity and no nightly rate.** There is no *"sleeps 8"* field to filter on.
-  So the app shows the group's own headcount (and how many are under 18) on every card and lets families
-  annotate capacity by hand. It deliberately does not pretend to know more than it does.
-- If capacity filtering turns out to matter more than discovery, the honest next step is a paid
-  third-party STR data API — unofficial, per-call, and liable to break. Worth deciding only after using
-  this once.
+- **There is no lodging search.** A Google Places nearby search used to sit alongside the paste box and
+  was removed: Places knows nothing about capacity, nightly rate or availability, which is all anyone
+  needs in order to judge a place to stay. It filled the screen with results that could not be evaluated.
+- Because pasted links are now the only source, `src/lib/unfurl.ts` works hard at reading them — JSON-LD
+  first, then OpenGraph/Twitter meta, then the visible prose for "sleeps 8" and "3 bedrooms". It is the
+  one part of the app with tests (`npm test`), because it cannot be checked against live sites: whether
+  a given site answers a server fetch varies by the day.
+- If reliable capacity and pricing turn out to matter more than the paste flow, the honest next step is a
+  paid third-party STR data API — unofficial, per-call, and liable to break.
 
-**Places is optional.** With no `GOOGLE_MAPS_API_KEY` the place fields degrade to plain text: a group can
-still name "Keystone", vote on it, agree an area, and shortlist pasted links. The whole app runs end to
-end without a Google account.
+**Places is still used for the destination step** (autocomplete on the Where screen) and is optional:
+with no `GOOGLE_MAPS_API_KEY` those fields degrade to plain text, and the whole app runs end to end
+without a Google account.
 
 ---
 
 ## Configuration
 
-All secrets are server-side. The Google key is never exposed — autocomplete, details, nearby search, and
-even **photos** are proxied through `/api/places/*`, because a Places photo URL embeds the key.
+All secrets are server-side. The Google key is never exposed — autocomplete, details, and even **photos**
+are proxied through `/api/places/*`, because a Places photo URL embeds the key.
 
 | Variable | Needed for | Notes |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | everything | from `supabase status` or the dashboard |
 | `SUPABASE_SERVICE_ROLE_KEY` | invite links | server-only — never prefix with `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_SITE_URL` | invite + sign-in links | must match the host people actually browse |
-| `GOOGLE_MAPS_API_KEY` | place search | optional — see below |
+| `GOOGLE_MAPS_API_KEY` | destination autocomplete | optional — see below |
 | `RESEND_API_KEY` | real invite email | optional — see below |
 | `EMAIL_FROM` | real invite email | must be a verified Resend sender |
 
 ### Google Places
 
 Enable **exactly one** API on the GCP project: **Places API (New)**. Not the legacy "Places API", and
-no Maps SDK — the app renders no map. It calls `places:autocomplete`, `places/{id}`, and
-`places:searchNearby`, plus the photo media endpoint.
+no Maps SDK — the app renders no map. It calls `places:autocomplete` and `places/{id}`, plus the photo
+media endpoint.
 
 The key is server-side only. Restrict it to *Places API (New)* under API restrictions, and leave
 application restrictions as **None** — a referrer restriction cannot match a server-side call, and
@@ -164,8 +175,9 @@ The app lives at the repo root, so Vercel needs no root-directory override.
 
 ## Known gaps
 
-- No realtime. Votes appear on refresh or navigation, not live.
-- No notification emails beyond the invite — nobody gets nudged when a phase opens.
+- No notification emails beyond invites and reminders — nobody is nudged automatically when a phase opens.
 - The organizer is a single point of failure; there is no way to hand the role over.
 - Trip dates are not checked against anything real (no flight or availability awareness).
-- No automated tests. Verification is `npm run typecheck`, `npm run build`, and the walkthrough above.
+- Nothing advances on its own. Even with every family locked in, the organizer presses the button.
+- Tests cover link unfurling only. Everything else is `npm run typecheck`, `npm run build`, and the
+  walkthrough above.

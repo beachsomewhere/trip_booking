@@ -1,48 +1,21 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getUser } from '@/lib/supabase/server';
+import { extractListing, type Unfurled } from '@/lib/unfurl';
 
 /**
- * Reads OpenGraph tags off a pasted lodging URL.
+ * Fetches a pasted lodging URL and reads what it can off the page.
  *
- * Airbnb and VRBO have no public API, so a pasted link is the only way a
- * short-term rental gets into a trip at all. Those same sites also fingerprint
- * server-side fetches, so this succeeds often but never reliably — the caller
- * must keep a manual-entry fallback rather than treating a miss as an error.
+ * Only the fetching and the guarding live here; the parsing is in lib/unfurl so
+ * it can be tested against fixtures rather than against whichever sites happen
+ * to allow a server-side fetch today.
+ *
+ * Sites that fingerprint server fetches will refuse, so a miss is expected
+ * rather than exceptional — the form pre-fills what came back and leaves every
+ * field editable.
  */
 
-const BLOCKED_HOSTS = /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/i;
-
-interface Unfurled {
-  url: string;
-  title: string | null;
-  image: string | null;
-  description: string | null;
-  siteName: string | null;
-}
-
-function meta(html: string, ...keys: string[]): string | null {
-  for (const k of keys) {
-    const patterns = [
-      new RegExp(`<meta[^>]+(?:property|name)=["']${k}["'][^>]+content=["']([^"']+)["']`, 'i'),
-      new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${k}["']`, 'i'),
-    ];
-    for (const re of patterns) {
-      const m = html.match(re);
-      if (m?.[1]) return decodeEntities(m[1]).trim();
-    }
-  }
-  return null;
-}
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
-}
+const BLOCKED_HOSTS =
+  /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/i;
 
 export async function POST(request: NextRequest) {
   const user = await getUser();
@@ -64,12 +37,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'That address cannot be fetched.' }, { status: 400 });
   }
 
-  const fallback: Unfurled = {
+  const empty: Unfurled = {
     url: parsed.toString(),
     title: null,
     image: null,
     description: null,
     siteName: parsed.hostname.replace(/^www\./, ''),
+    price: null,
+    rating: null,
+    address: null,
+    capacity: null,
+    bedrooms: null,
   };
 
   try {
@@ -80,23 +58,19 @@ export async function POST(request: NextRequest) {
         Accept: 'text/html,application/xhtml+xml',
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(9000),
     });
 
-    if (!res.ok) return NextResponse.json({ ...fallback, blocked: true });
+    if (!res.ok) return NextResponse.json({ ...empty, blocked: true });
 
-    // Only the <head> matters, and listing pages are enormous.
-    const html = (await res.text()).slice(0, 250_000);
+    // Listing pages are enormous and everything useful is near the top.
+    const html = (await res.text()).slice(0, 400_000);
 
     return NextResponse.json({
-      ...fallback,
-      title: meta(html, 'og:title', 'twitter:title') ?? html.match(/<title[^>]*>([^<]+)/i)?.[1]?.trim() ?? null,
-      image: meta(html, 'og:image', 'twitter:image'),
-      description: meta(html, 'og:description', 'description'),
-      siteName: meta(html, 'og:site_name') ?? fallback.siteName,
+      ...empty,
+      ...extractListing(html, parsed.hostname),
     });
   } catch {
-    // Timeouts and bot walls are expected here, not exceptional.
-    return NextResponse.json({ ...fallback, blocked: true });
+    return NextResponse.json({ ...empty, blocked: true });
   }
 }

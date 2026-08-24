@@ -14,6 +14,8 @@ export interface CandidateView {
   priceNote: string | null;
   capacityNote: string | null;
   rating: number | null;
+  bedrooms: string | null;
+  description: string | null;
   source: string;
   addedByName: string;
   canRemove: boolean;
@@ -96,6 +98,7 @@ function CandidateCard({
         <p className="mt-1 text-sm text-muted">
           {[
             c.capacityNote,
+            c.bedrooms,
             c.priceNote,
             c.rating ? `${c.rating}★` : null,
           ]
@@ -103,6 +106,10 @@ function CandidateCard({
             .join(' · ') ||
             `No capacity listed — ${headcountIsMineOnly ? 'your family is' : 'your group is'} ${headcount}`}
         </p>
+
+        {c.description ? (
+          <p className="mt-1 line-clamp-3 text-sm text-muted">{c.description}</p>
+        ) : null}
 
         {c.pickedByNames.length > 0 ? (
           <p className="mt-1 text-sm text-moss-600">
