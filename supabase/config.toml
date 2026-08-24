@@ -216,6 +216,14 @@ web3 = 30
 # provider = "hcaptcha"
 # secret = ""
 
+# Sign-in email. Uses a token hash rather than a PKCE code so the link works
+# when it is opened on a different device than it was requested from — see the
+# comment at the top of supabase/templates/magic_link.html. The hosted project
+# needs the same template pasted into Authentication -> Email Templates.
+[auth.email.template.magic_link]
+subject = "Your Lock the Trip sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
 [auth.email]
 # Allow/disallow new user signups via email to your project.
 enable_signup = true

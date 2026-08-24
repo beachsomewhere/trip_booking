@@ -33,6 +33,9 @@ export async function sendMagicLink(
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data,
     options: {
+      // The `?next=` matters beyond routing: the magic-link template builds its
+      // link as `{{ .RedirectTo }}&token_hash=...`, so this URL must always
+      // carry a query string. See supabase/templates/magic_link.html.
       emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });

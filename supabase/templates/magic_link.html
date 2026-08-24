@@ -1,0 +1,40 @@
+<!--
+  Sign-in email.
+
+  The link deliberately carries {{ .TokenHash }} rather than {{ .ConfirmationURL }}.
+
+  ConfirmationURL sends people through GoTrue's /verify, which hands back a PKCE
+  `?code=` — and PKCE requires a code verifier stored by the browser that asked
+  for the link. Ask on a laptop, open the email on a phone, and there is no
+  verifier: sign-in fails with "PKCE code verifier not found in storage", which
+  is both unavoidable and unintelligible. Mail clients that pre-fetch links can
+  burn the code before the person even clicks it.
+
+  A token hash needs no verifier. It works on any device, in any browser, and
+  /auth/callback already knows how to redeem it.
+
+  {{ .RedirectTo }} is the emailRedirectTo the app sent, which always carries a
+  ?next= query string — hence the & below rather than a ?.
+-->
+<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1c1a17">
+  <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b6558;margin:0 0 8px">
+    Lock the Trip
+  </p>
+  <h1 style="font-size:22px;margin:0 0 12px">Your sign-in link</h1>
+  <p style="font-size:15px;line-height:1.55;color:#3d3a33;margin:0 0 20px">
+    Follow the link below to sign in. It can only be used once, and it expires after an hour.
+  </p>
+  <p style="margin:0 0 24px">
+    <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=magiclink"
+       style="display:inline-block;background:#0f6a62;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:15px;font-weight:500">
+      Sign in
+    </a>
+  </p>
+  <p style="font-size:13px;color:#6b6558;margin:0 0 20px">
+    Or paste this link:<br />
+    <span style="word-break:break-all">{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=magiclink</span>
+  </p>
+  <p style="font-size:13px;color:#6b6558;margin:0">
+    If you didn't ask for this, you can ignore it — nobody can sign in without the link.
+  </p>
+</div>

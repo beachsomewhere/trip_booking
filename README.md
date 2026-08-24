@@ -188,10 +188,20 @@ The app lives at the repo root, so Vercel needs no root-directory override.
 2. Add every variable above in Vercel's project settings, with
    `NEXT_PUBLIC_SITE_URL=https://lockthetrip.online`.
 3. Point `lockthetrip.online` at the Vercel project.
-4. **Add the production URL to Supabase Auth's redirect allowlist** — Authentication → URL
+4. **Paste `supabase/templates/magic_link.html` into Authentication → Emails → Magic Link**, and set
+   the subject to "Your Lock the Trip sign-in link". `config.toml` only configures the local stack;
+   hosted templates live in the dashboard and default to `{{ .ConfirmationURL }}`.
+
+   This is not cosmetic. `ConfirmationURL` produces a **PKCE** link, which only works in the browser
+   that requested it — the code verifier lives in that browser's cookies. Ask for a link on a laptop and
+   open the email on a phone and sign-in fails with *"PKCE code verifier not found in storage"*, which
+   is accurate and completely unactionable. Mail clients that pre-fetch links can also burn the code
+   before anyone clicks. The template ships a `token_hash` instead, which needs no verifier and works
+   from any device.
+5. **Add the production URL to Supabase Auth's redirect allowlist** — Authentication → URL
    Configuration → Site URL and Redirect URLs (`https://lockthetrip.online/auth/callback`). Skipping
    this is the classic failure: sign-in works locally and silently breaks in production.
-5. Apply the schema to the hosted project: `supabase link --project-ref <ref>` then `supabase db push`.
+6. Apply the schema to the hosted project: `supabase link --project-ref <ref>` then `supabase db push`.
    Do **not** run `supabase/seed.sql` against production — it creates fake users.
 
 ---
