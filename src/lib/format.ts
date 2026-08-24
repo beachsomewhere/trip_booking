@@ -50,13 +50,18 @@ export function rangeOverlap(
   return { start: aStart > bStart ? aStart : bStart, end: aEnd < bEnd ? aEnd : bEnd };
 }
 
-/** "the Barnes" / "the Barnes and the Chens" / "the Barnes, the Chens, and 2 more" */
+/**
+ * "The Barnes" / "The Barnes and The Chens" / "The Barnes, The Chens, +2".
+ *
+ * Names are rendered exactly as the family typed them. An earlier version
+ * prefixed "the ", which produced "the Chen" for anyone who did not pluralise
+ * their own surname — and broke outright for names like "Mei & Jon".
+ */
 export function listFamilies(names: string[], max = 2): string {
   if (names.length === 0) return 'nobody yet';
-  if (names.length === 1) return `the ${names[0]}`;
-  if (names.length === 2) return `the ${names[0]} and the ${names[1]}`;
-  const shown = names.slice(0, max).map((n) => `the ${n}`);
-  return `${shown.join(', ')}, and ${names.length - max} more`;
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, max).join(', ')}, and ${names.length - max} more`;
 }
 
 export function pluralize(n: number, one: string, many = `${one}s`): string {

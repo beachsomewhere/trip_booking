@@ -13,10 +13,11 @@ export default async function TripsPage() {
 
   const supabase = await createClient();
   // RLS scopes this to trips the signed-in user is actually part of.
-  const { data: trips } = await supabase
+  const { data: trips, error } = await supabase
     .from('trips')
-    .select('id, name, phase, target_finalize_by, organizer_user_id, families(id, status)')
+    .select('id, name, phase, target_finalize_by, organizer_user_id, families!families_trip_id_fkey(id, status)')
     .order('created_at', { ascending: false });
+  if (error) console.error('[trips] query failed', error);
 
   return (
     <>

@@ -6,7 +6,7 @@ import { createServerClient } from '@supabase/ssr';
  * cookies back onto the response. Without this, Server Components see a stale
  * or expired session and users get logged out mid-flow.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

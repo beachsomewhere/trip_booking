@@ -1040,3 +1040,24 @@ begin
     execute format('grant execute on function public.%s to authenticated', fn);
   end loop;
 end $$;
+
+-- ===========================================================================
+-- Table grants.
+--
+-- RLS policies filter rows; they do not grant access to a table. Without these
+-- GRANTs every query fails with "permission denied for table" before a policy
+-- is ever consulted — the failure looks identical to a policy that returned no
+-- rows, which makes it a genuinely nasty one to debug.
+--
+-- Granting broadly here is safe and is the standard Supabase model: RLS is
+-- enabled on every table above, and a table with no permissive policy for an
+-- operation still denies it.
+-- ===========================================================================
+
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select on all tables in schema public to anon;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;

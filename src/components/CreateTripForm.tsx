@@ -15,9 +15,9 @@ export function CreateTripForm() {
       </Field>
       <Field
         label="Your family name"
-        hint="How the group will see you — “the Barnes”, “the Chens”."
+        hint="Exactly how the group should see you — “The Barnes”, “Mei & Jon”."
       >
-        <Input name="familyName" required maxLength={60} placeholder="Barnes" />
+        <Input name="familyName" required maxLength={60} placeholder="The Barnes" />
       </Field>
       <Field
         label="Decide within"
