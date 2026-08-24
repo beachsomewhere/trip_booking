@@ -41,8 +41,16 @@ const a = extractListing(jsonLdPage, 'www.example.com');
 check('JSON-LD name beats <title> and og:title', a.title, 'Slopeside 5BR with hot tub');
 check('JSON-LD description', a.description, 'Ski-in ski-out chalet a two-minute walk from the gondola.');
 check('first image of an array', a.image, 'https://img.example/1.jpg');
-check('occupancy object unwraps to a value', a.capacity, '12');
-check('bedrooms', a.bedrooms, '5');
+check('capacity reads as the page states it', a.capacity, 'Sleeps 12');
+check('bedrooms', a.bedrooms, '5 bedrooms');
+
+// With no prose to read, the structured occupancy is still what answers.
+const ldOnly = `<html><head><script type="application/ld+json">
+{"@type":"Hotel","name":"Quiet Inn","occupancy":{"@type":"QuantitativeValue","value":9},"numberOfRooms":3}
+</script></head><body></body></html>`;
+const l = extractListing(ldOnly, 'inn.test');
+check('occupancy object unwraps when nothing else says', l.capacity, '9');
+check('numberOfRooms used when no prose', l.bedrooms, '3');
 check('price carries its currency', a.price, 'USD 780');
 check('rating', a.rating, '4.8');
 check('address parts joined', a.address, '12 River Run, Keystone, CO');
@@ -80,6 +88,29 @@ check('broken JSON-LD falls through to meta', extractListing(brokenLdPage, 'x.co
 const emptyResult = extractListing('<html></html>', 'www.nowhere.test');
 check('empty page yields no title', emptyResult.title, '');
 check('empty page still names the site', emptyResult.siteName, 'nowhere.test');
+
+// --- Airbnb, from the real markup of a live listing -------------------------
+// Shapes taken verbatim from www.airbnb.com/rooms/48922042: the JSON-LD reports
+// occupancy 6 (which is beds), the page text says 12 guests, the room counts
+// live only in og:title, and there is no price anywhere in the server HTML.
+const airbnb = `
+<html><head>
+<meta property="og:site_name" content="Airbnb"/>
+<meta property="og:title" content="Villa in Cozumel · ★4.91 · 4 bedrooms · 6 beds · 5 baths"/>
+<meta property="og:description" content="Oceanfront Villa Santa Pilar"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VacationRental",
+"name":"Oceanfront Villa Santa Pilar","description":"CASA SANTA PILAR is a private, top-rated villa.",
+"address":{"addressLocality":"Cozumel"},"aggregateRating":{"@type":"AggregateRating","ratingValue":4.91,"ratingCount":"120"},
+"containsPlace":{"@type":"Accommodation","occupancy":{"@type":"QuantitativeValue","value":6}}}</script>
+</head><body>${'<div>padding</div>'.repeat(20000)}<span>12 guests</span></body></html>`;
+
+const ab = extractListing(airbnb, 'www.airbnb.com');
+check('airbnb prefers the JSON-LD name over the og headline', ab.title, 'Oceanfront Villa Santa Pilar');
+check('airbnb capacity comes from the page text, not schema.org occupancy', ab.capacity, '12 guests');
+check('airbnb room counts come out of og:title', ab.bedrooms, '4 bedrooms · 6 beds · 5 baths');
+check('airbnb rating comes from JSON-LD', ab.rating, '4.91');
+check('airbnb address is the locality', ab.address, 'Cozumel');
+check('airbnb ships no price in server HTML — this must stay null, not a guess', ab.price, null);
 
 for (const r of results) {
   console.log(

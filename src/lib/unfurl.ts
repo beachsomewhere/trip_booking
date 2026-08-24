@@ -125,15 +125,34 @@ function fromJsonLd(html: string) {
   };
 }
 
-/** Last resort: pull "sleeps 8" / "3 bedrooms" out of the visible copy. */
+/**
+ * "4 bedrooms · 6 beds · 5 baths", from wherever those numbers appear.
+ *
+ * Airbnb puts exactly this in og:title ("Villa in Cozumel · ★4.91 · 4 bedrooms
+ * · 6 beds · 5 baths") and nowhere structured, so the summary is assembled from
+ * whichever of the three turn up.
+ */
+function roomSummary(text: string): string | null {
+  const parts: string[] = [];
+  for (const [re, one, many] of [
+    [/\b(\d{1,2})\s+bedrooms?\b/i, 'bedroom', 'bedrooms'],
+    [/\b(\d{1,2})\s+beds?\b/i, 'bed', 'beds'],
+    [/\b(\d{1,2}(?:\.5)?)\s+baths?\b/i, 'bath', 'baths'],
+  ] as const) {
+    const m = text.match(re);
+    if (m?.[1]) parts.push(`${m[1]} ${Number(m[1]) === 1 ? one : many}`);
+  }
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/** Pull "sleeps 8" / "12 guests" / "4 bedrooms" out of the visible copy. */
 function fromProse(html: string) {
   const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   const sleeps = text.match(/\b(?:sleeps|accommodates)\s+(\d{1,2})/i);
   const guests = text.match(/\b(\d{1,2})\s+guests?\b/i);
-  const beds = text.match(/\b(\d{1,2})\s+bedrooms?\b/i);
   return {
     capacity: sleeps?.[1] ? `Sleeps ${sleeps[1]}` : guests?.[1] ? `${guests[1]} guests` : null,
-    bedrooms: beds?.[1] ? `${beds[1]} bedrooms` : null,
+    bedrooms: roomSummary(text),
   };
 }
 
@@ -142,20 +161,30 @@ function fromProse(html: string) {
 export function extractListing(html: string, hostname: string): Omit<Unfurled, 'url'> {
   const ld = fromJsonLd(html);
   const prose = fromProse(html);
+  // Airbnb encodes rating and the room counts into og:title and leaves them out
+  // of its JSON-LD, so the headline is worth mining even when it is not the
+  // best name for the place.
+  const headline = meta(html, 'og:title', 'twitter:title');
+  const headlineRooms = headline ? roomSummary(headline) : null;
+  const headlineRating = headline?.match(/★\s*([\d.]+)/)?.[1] ?? null;
 
   return {
     title:
       ld.title ??
-      meta(html, 'og:title', 'twitter:title') ??
+      headline ??
       decodeEntities(html.match(/<title[^>]*>([^<]+)/i)?.[1] ?? '').trim() ??
       null,
     image: ld.image ?? meta(html, 'og:image', 'twitter:image'),
     description: ld.description ?? meta(html, 'og:description', 'description'),
     siteName: meta(html, 'og:site_name') ?? hostname.replace(/^www\./, ''),
     price: ld.price ?? meta(html, 'product:price:amount', 'og:price:amount', 'price'),
-    rating: ld.rating ?? meta(html, 'og:rating'),
+    rating: ld.rating ?? headlineRating ?? meta(html, 'og:rating'),
     address: ld.address ?? meta(html, 'og:street-address', 'og:locality') ?? null,
-    capacity: ld.capacity ?? prose.capacity,
-    bedrooms: ld.bedrooms ?? prose.bedrooms,
+    // Prose wins over JSON-LD here, which is backwards from every other field:
+    // Airbnb's schema.org `occupancy` reports beds (6) while the page plainly
+    // says the place takes 12 guests. The number a human reads on the page is
+    // the one they are choosing against.
+    capacity: prose.capacity ?? ld.capacity ?? null,
+    bedrooms: headlineRooms ?? prose.bedrooms ?? ld.bedrooms ?? null,
   };
 }

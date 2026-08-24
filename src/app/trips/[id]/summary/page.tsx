@@ -205,6 +205,9 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
               headcount: f.family_attendees.length,
             }))}
             assignments={assignments}
+            selectionIds={Object.fromEntries(
+              allSelections.map((sel) => [sel.candidate_id, sel.id]),
+            )}
           />
         </section>
       ) : null}

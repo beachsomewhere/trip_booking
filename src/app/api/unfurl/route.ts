@@ -63,8 +63,11 @@ export async function POST(request: NextRequest) {
 
     if (!res.ok) return NextResponse.json({ ...empty, blocked: true });
 
-    // Listing pages are enormous and everything useful is near the top.
-    const html = (await res.text()).slice(0, 400_000);
+    // Listing pages are enormous, and the useful parts are *not* all near the
+    // top: Airbnb's own page is ~600KB and puts "12 guests" at around 548KB,
+    // well past where this used to cut. Capacity is the single most important
+    // field on the page, so the cap has to clear a whole listing page.
+    const html = (await res.text()).slice(0, 2_000_000);
 
     return NextResponse.json({
       ...empty,

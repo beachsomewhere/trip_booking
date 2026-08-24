@@ -299,12 +299,19 @@ export async function copyPicksFrom(tripId: string, fromFamilyId: string) {
   revalidateTrip(tripId);
 }
 
+/**
+ * Books a place for a set of families.
+ *
+ * Returns the failure rather than throwing it: this is called from a button in
+ * a transition, and a thrown server action there is swallowed silently — the
+ * click just appears to do nothing, which is exactly the bug this replaced.
+ */
 export async function setSelection(
   tripId: string,
   candidateId: string,
   familyIds: string[],
   label?: string,
-) {
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase.rpc('set_lodging_selection', {
     p_trip_id: tripId,
@@ -312,16 +319,21 @@ export async function setSelection(
     p_family_ids: familyIds,
     p_label: label,
   });
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidateTrip(tripId);
+  return {};
 }
 
-export async function clearSelection(tripId: string, selectionId: string) {
+export async function clearSelection(
+  tripId: string,
+  selectionId: string,
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase.rpc('clear_lodging_selection', {
     p_trip_id: tripId,
     p_selection_id: selectionId,
   });
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidateTrip(tripId);
+  return {};
 }
