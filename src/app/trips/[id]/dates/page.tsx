@@ -25,8 +25,12 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
   const done = isPhaseComplete(ctx.phase, 'dates');
   const canVote = !done && ctx.myFamily?.status === 'active';
 
-  const progress = phaseProgress(ctx.votingFamilies, proposals, allVotes);
-  const base = boardBase(proposals, allVotes, ctx.votingFamilies, ctx.myFamily?.id ?? null);
+  // Full roster, not just active families: phaseProgress() and tally() filter to
+  // active internally, while name lookup needs everyone — otherwise a family
+  // that opts out or is removed turns into "Someone suggested" on proposals
+  // they already made.
+  const progress = phaseProgress(ctx.families, proposals, allVotes);
+  const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
 
   // Windows every proposal can live inside. When the group's ranges all overlap
   // there is usually an obvious answer nobody has spotted yet.
@@ -85,6 +89,9 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
         <PhaseProgressPanel
           progress={progress}
           myFamilyId={ctx.myFamily?.id}
+          awaitingInvite={ctx.families
+            .filter((f) => f.status === 'invited')
+            .map((f) => ({ id: f.id, name: f.name }))}
           nudge={ctx.isOrganizer && shouldNudgeOrganizer(progress, ctx.trip.target_finalize_by)}
         />
       ) : null}
@@ -133,7 +140,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
                   start: p.start_date,
                   end: p.end_date,
                   label:
-                    ctx.votingFamilies.find((f) => f.id === p.family_id)?.name ??
+                    ctx.families.find((f) => f.id === p.family_id)?.name ??
                     'Another family',
                 }))}
             />

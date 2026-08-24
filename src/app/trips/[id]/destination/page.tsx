@@ -25,8 +25,12 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
   const done = isPhaseComplete(ctx.phase, 'destination');
   const canVote = !done && ctx.myFamily?.status === 'active';
 
-  const progress = phaseProgress(ctx.votingFamilies, proposals, allVotes);
-  const base = boardBase(proposals, allVotes, ctx.votingFamilies, ctx.myFamily?.id ?? null);
+  // Full roster, not just active families: phaseProgress() and tally() filter to
+  // active internally, while name lookup needs everyone — otherwise a family
+  // that opts out or is removed turns into "Someone suggested" on proposals
+  // they already made.
+  const progress = phaseProgress(ctx.families, proposals, allVotes);
+  const base = boardBase(proposals, allVotes, ctx.families, ctx.myFamily?.id ?? null);
 
   const items: BoardItem[] = base.map(({ proposal, item }) => ({
     ...item,
@@ -85,6 +89,9 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
         <PhaseProgressPanel
           progress={progress}
           myFamilyId={ctx.myFamily?.id}
+          awaitingInvite={ctx.families
+            .filter((f) => f.status === 'invited')
+            .map((f) => ({ id: f.id, name: f.name }))}
           nudge={ctx.isOrganizer && shouldNudgeOrganizer(progress, ctx.trip.target_finalize_by)}
         />
       ) : null}

@@ -12,12 +12,19 @@ export function PhaseProgressPanel({
   progress,
   nudge,
   myFamilyId,
+  awaitingInvite = [],
   children,
 }: {
   progress: PhaseProgress;
   nudge?: boolean;
   /** Lets the panel address you directly instead of listing you as a laggard. */
   myFamilyId?: string | null;
+  /**
+   * Families invited but not yet joined. They cannot vote, so they are absent
+   * from `progress` entirely — which made the panel claim "everyone has weighed
+   * in" while an invitation was still outstanding.
+   */
+  awaitingInvite?: { id: string; name: string }[];
   children?: React.ReactNode;
 }) {
   const pct = progress.total === 0 ? 0 : (progress.responded / progress.total) * 100;
@@ -37,7 +44,9 @@ export function PhaseProgressPanel({
           {progress.total === 1 ? 'family is' : 'families are'} in
         </p>
         {progress.waitingOn.length === 0 ? (
-          <p className="text-sm text-moss-600">Everyone has weighed in</p>
+          <p className="text-sm text-moss-600">
+            {awaitingInvite.length > 0 ? 'Everyone who has joined' : 'Everyone'} has weighed in
+          </p>
         ) : waitingOnMe && others.length === 0 ? (
           <p className="text-sm text-accent">Your turn</p>
         ) : waitingOnMe ? (
@@ -50,6 +59,14 @@ export function PhaseProgressPanel({
           </p>
         )}
       </div>
+
+      {awaitingInvite.length > 0 ? (
+        <p className="text-sm text-muted">
+          {listFamilies(awaitingInvite.map((f) => f.name))}{' '}
+          {awaitingInvite.length === 1 ? "hasn't" : "haven't"} accepted the invite yet, so{' '}
+          {awaitingInvite.length === 1 ? 'they are' : 'they are'} not counted above.
+        </p>
+      ) : null}
 
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
         <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
