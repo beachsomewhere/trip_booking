@@ -84,6 +84,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
       {!done ? (
         <PhaseProgressPanel
           progress={progress}
+          myFamilyId={ctx.myFamily?.id}
           nudge={ctx.isOrganizer && shouldNudgeOrganizer(progress, ctx.trip.target_finalize_by)}
         />
       ) : null}

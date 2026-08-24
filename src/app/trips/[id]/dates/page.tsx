@@ -84,6 +84,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
       {!done ? (
         <PhaseProgressPanel
           progress={progress}
+          myFamilyId={ctx.myFamily?.id}
           nudge={ctx.isOrganizer && shouldNudgeOrganizer(progress, ctx.trip.target_finalize_by)}
         />
       ) : null}
@@ -122,7 +123,20 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
               : 'Suggest dates'}
           </summary>
           <Card className="mt-2">
-            <ProposeDatesForm tripId={id} />
+            {/* Marking what others already proposed turns a blank calendar into
+                a reaction: you can see their week before choosing yours. */}
+            <ProposeDatesForm
+              tripId={id}
+              marked={live
+                .filter((p) => p.family_id !== ctx.myFamily?.id)
+                .map((p) => ({
+                  start: p.start_date,
+                  end: p.end_date,
+                  label:
+                    ctx.votingFamilies.find((f) => f.id === p.family_id)?.name ??
+                    'Another family',
+                }))}
+            />
           </Card>
         </details>
       ) : null}

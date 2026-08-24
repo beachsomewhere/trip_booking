@@ -11,13 +11,23 @@ import type { PhaseProgress } from '@/lib/consensus';
 export function PhaseProgressPanel({
   progress,
   nudge,
+  myFamilyId,
   children,
 }: {
   progress: PhaseProgress;
   nudge?: boolean;
+  /** Lets the panel address you directly instead of listing you as a laggard. */
+  myFamilyId?: string | null;
   children?: React.ReactNode;
 }) {
   const pct = progress.total === 0 ? 0 : (progress.responded / progress.total) * 100;
+
+  // Naming who the group is waiting on is the social pressure that moves these
+  // decisions — but only when it is someone else. Telling a person the group is
+  // waiting on them, by their own family name, reads like the app nagging you
+  // on behalf of nobody. Address them in second person instead.
+  const others = progress.waitingOn.filter((f) => f.id !== myFamilyId);
+  const waitingOnMe = progress.waitingOn.some((f) => f.id === myFamilyId);
 
   return (
     <Card className="space-y-3">
@@ -26,12 +36,18 @@ export function PhaseProgressPanel({
           {progress.responded} of {progress.total}{' '}
           {progress.total === 1 ? 'family is' : 'families are'} in
         </p>
-        {progress.waitingOn.length > 0 ? (
+        {progress.waitingOn.length === 0 ? (
+          <p className="text-sm text-moss-600">Everyone has weighed in</p>
+        ) : waitingOnMe && others.length === 0 ? (
+          <p className="text-sm text-accent">Your turn</p>
+        ) : waitingOnMe ? (
           <p className="text-sm text-muted">
-            Waiting on: {listFamilies(progress.waitingOn.map((f) => f.name))}
+            Waiting on you and {listFamilies(others.map((f) => f.name))}
           </p>
         ) : (
-          <p className="text-sm text-moss-600">Everyone has weighed in</p>
+          <p className="text-sm text-muted">
+            Waiting on: {listFamilies(others.map((f) => f.name))}
+          </p>
         )}
       </div>
 
@@ -39,9 +55,12 @@ export function PhaseProgressPanel({
         <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
       </div>
 
-      {nudge && progress.waitingOn.length > 0 ? (
+      {/* Only offer to move on without OTHER families — "move ahead without
+          yourself" is nonsense, and this used to fire when you were the only
+          one who had not answered. */}
+      {nudge && others.length > 0 ? (
         <p className="rounded-lg bg-clay-100 px-3 py-2 text-sm text-clay-600">
-          {pluralize(progress.waitingOn.length, 'family', 'families')} still quiet. You can move
+          {pluralize(others.length, 'family', 'families')} still quiet. You can move
           ahead without them, or drop them from the trip on the Who screen.
         </p>
       ) : null}

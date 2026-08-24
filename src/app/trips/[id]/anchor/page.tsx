@@ -75,6 +75,7 @@ export default async function AnchorPage({ params }: { params: Promise<{ id: str
       {!done ? (
         <PhaseProgressPanel
           progress={progress}
+          myFamilyId={ctx.myFamily?.id}
           nudge={ctx.isOrganizer && shouldNudgeOrganizer(progress, ctx.trip.target_finalize_by)}
         />
       ) : null}
