@@ -1,7 +1,12 @@
 import { AttendeeEditor } from '@/components/families/AttendeeEditor';
 import { FamilyProposalCard, type ProposalView } from '@/components/families/FamilyProposalCard';
 import { InviteFamilyForm } from '@/components/families/InviteFamilyForm';
-import { AddEmailForm, ResendInvitesButton, StatusButton } from '@/components/families/FamilyControls';
+import {
+  AddEmailForm,
+  LeaveTripButton,
+  ResendInvitesButton,
+  StatusButton,
+} from '@/components/families/FamilyControls';
 import { AdvanceButton } from '@/components/AdvanceButton';
 import { DeleteTripButton } from '@/components/DeleteTripButton';
 import { CopyLink } from '@/components/CopyLink';
@@ -103,20 +108,15 @@ export default async function FamiliesPage({ params }: { params: Promise<{ id: s
                   >
                     {family.status === 'invited' ? 'invite sent' : family.status.replace('_', ' ')}
                   </Badge>
-                  {isMine && family.status === 'active' ? (
-                    <StatusButton
+                  {/* The organizer cannot leave their own trip — they would keep
+                      access through the organizer clause while showing as gone.
+                      They delete it instead. */}
+                  {isMine && family.status === 'active' && !ctx.isOrganizer ? (
+                    <LeaveTripButton
                       tripId={id}
                       familyId={family.id}
-                      to="opted_out"
-                      confirm="Opt your family out of this trip? The others will keep planning without you."
-                    >
-                      Opt out
-                    </StatusButton>
-                  ) : null}
-                  {isMine && family.status === 'opted_out' ? (
-                    <StatusButton tripId={id} familyId={family.id} to="active">
-                      Opt back in
-                    </StatusButton>
+                      familyName={family.name}
+                    />
                   ) : null}
                   {ctx.isOrganizer && !isMine && family.status !== 'removed' ? (
                     <StatusButton

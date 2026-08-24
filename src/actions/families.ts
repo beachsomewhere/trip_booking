@@ -164,7 +164,29 @@ export async function setFamilyStatus(tripId: string, familyId: string, status: 
     p_status: status,
   });
   if (error) throw new Error(error.message);
+
   revalidatePath(`/trips/${tripId}`, 'layout');
+  revalidatePath('/trips');
+}
+
+/**
+ * Leaves the trip: the group sees the family as opted out and stops counting
+ * them, and the trip drops off this family's list.
+ *
+ * The redirect is required, not cosmetic. Opting out makes is_trip_member()
+ * false, so staying on the trip page would leave the caller staring at a screen
+ * that now 404s on refresh.
+ */
+export async function leaveTrip(tripId: string, familyId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_family_status', {
+    p_family_id: familyId,
+    p_status: 'opted_out',
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/trips');
+  redirect('/trips');
 }
 
 export async function resendInvites(tripId: string) {
