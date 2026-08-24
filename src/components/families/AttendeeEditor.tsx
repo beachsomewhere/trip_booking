@@ -74,7 +74,7 @@ export function AttendeeEditor({
       <div className="flex items-center gap-2 px-1 text-xs font-medium text-muted">
         {showComing ? <span className="w-9 text-center">On?</span> : null}
         <span className="flex-1">Name</span>
-        <span className="w-56">Born</span>
+        <span className="w-56">Born *</span>
         <span className="w-9 text-center">Age</span>
         <span className="w-9" aria-hidden />
       </div>
@@ -132,6 +132,7 @@ export function AttendeeEditor({
                   value={row.birthMonth}
                   onChange={(e) => update(row.key, { birthMonth: e.target.value })}
                   aria-label="Birth month"
+                  required
                   className="w-28 rounded-lg border border-edge bg-surface px-2 py-2 text-sm text-text"
                 >
                   <option value="">Month</option>
@@ -146,6 +147,7 @@ export function AttendeeEditor({
                   value={row.birthYear}
                   onChange={(e) => update(row.key, { birthYear: e.target.value })}
                   aria-label="Birth year"
+                  required
                   className="w-24 rounded-lg border border-edge bg-surface px-2 py-2 text-sm text-text"
                 >
                   <option value="">Year</option>
@@ -182,7 +184,7 @@ export function AttendeeEditor({
                   name="personEmails"
                   value={row.emails}
                   onChange={(e) => update(row.key, { emails: e.target.value })}
-                  placeholder="optional — kyle@example.com"
+                  placeholder="kyle@example.com"
                   aria-label={`Email for ${row.name || 'this person'}`}
                 />
               </div>
@@ -193,8 +195,9 @@ export function AttendeeEditor({
       </div>
 
       <p className="text-xs text-muted">
-        We keep birth month and year — never a full date of birth — so the next trip already knows
-        everyone&apos;s age. Ages shown are as they&apos;ll be
+        Birth month and year are required — they&apos;re how ages stay right on a trip that&apos;s
+        still months away, and we never keep a full date of birth. At least one person needs an
+        email so the group can reach you. Ages shown are as they&apos;ll be
         {tripStart ? ' on the trip' : ' today'}.
       </p>
 

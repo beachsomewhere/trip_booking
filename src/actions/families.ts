@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createAdminClient, createClient, getUser } from '@/lib/supabase/server';
 import { sendInviteEmail } from '@/lib/email/invites';
+import { listFamilies } from '@/lib/format';
 import type { ActionState } from '@/actions/auth';
 import type { Database } from '@/types/db';
 
@@ -202,6 +203,24 @@ export async function saveFamilyAndAttend(
     .filter((p) => p.name.length > 0);
 
   if (people.length === 0) return { error: 'Add at least one person.' };
+
+  // Both are load-bearing, so they are required rather than encouraged:
+  // without a birth month and year there is no age to compute, and a family
+  // with no address at all cannot be reached about the trip again.
+  const missingBirth = people.filter((p) => p.birth_month == null || p.birth_year == null);
+  if (missingBirth.length > 0) {
+    return {
+      error: `Add a birth month and year for ${listFamilies(missingBirth.map((p) => p.name))}.`,
+    };
+  }
+
+  if (!people.some((p) => p.emails.length > 0)) {
+    return {
+      error:
+        'At least one person needs an email address, or nobody in your family can be reached about the trip.',
+    };
+  }
+
 
   const supabase = await createClient();
 

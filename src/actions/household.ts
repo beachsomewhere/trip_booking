@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { listFamilies } from '@/lib/format';
 import type { ActionState } from '@/actions/auth';
 
 /**
@@ -35,6 +36,23 @@ export async function saveHouseholdPeople(
       emails: splitEmails(emailLists[i] ?? ''),
     }))
     .filter((p) => p.name.length > 0);
+
+  // Both are load-bearing, so they are required rather than encouraged:
+  // without a birth month and year there is no age to compute, and a family
+  // with no address at all cannot be reached about the trip again.
+  const missingBirth = people.filter((p) => p.birth_month == null || p.birth_year == null);
+  if (missingBirth.length > 0) {
+    return {
+      error: `Add a birth month and year for ${listFamilies(missingBirth.map((p) => p.name))}.`,
+    };
+  }
+
+  if (!people.some((p) => p.emails.length > 0)) {
+    return {
+      error:
+        'At least one person needs an email address, or nobody in your family can be reached about the trip.',
+    };
+  }
 
   const supabase = await createClient();
   const { data: householdId, error: hhError } = await supabase.rpc('ensure_household');
