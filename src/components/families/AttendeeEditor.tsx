@@ -70,8 +70,10 @@ export function AttendeeEditor({
   return (
     <form action={action} className="space-y-3">
       {/* Column widths mirror the rows exactly, including the age readout and
-          the remove button, or the labels drift out of line. */}
-      <div className="flex items-center gap-2 px-1 text-xs font-medium text-muted">
+          the remove button, or the labels drift out of line. Hidden once the
+          rows wrap: headings that line up with nothing are worse than none, and
+          every field below is labelled for screen readers regardless. */}
+      <div className="hidden items-center gap-2 px-1 text-xs font-medium text-muted sm:flex">
         {showComing ? <span className="w-9 text-center">On?</span> : null}
         <span className="flex-1">Name</span>
         <span className="w-56">Born *</span>
@@ -98,7 +100,11 @@ export function AttendeeEditor({
                 showComing && !row.coming && 'opacity-60',
               )}
             >
-            <div className="flex items-center gap-2">
+            {/* One line on a laptop; two on a phone. The born group is a fixed
+                224px, so on a narrow screen a single row left the name field
+                squeezed to a sliver — you could not see whose row you were
+                editing. */}
+            <div className="flex flex-wrap items-center gap-2">
               {showComing ? (
                 <label className="flex w-9 justify-center">
                   <span className="sr-only">Coming on this trip</span>
@@ -116,7 +122,7 @@ export function AttendeeEditor({
               <input type="hidden" name="personId" value={row.personId ?? ''} />
               <input type="hidden" name="coming" value={!showComing || row.coming ? '1' : '0'} />
 
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <Input
                   name="attendeeName"
                   value={row.name}
@@ -126,14 +132,15 @@ export function AttendeeEditor({
                 />
               </div>
 
-              <div className="flex w-56 gap-2">
+              <div className="flex basis-full items-center gap-2 sm:basis-auto">
+              <div className="flex min-w-0 flex-1 gap-2 sm:w-56 sm:flex-none">
                 <select
                   name="birthMonth"
                   value={row.birthMonth}
                   onChange={(e) => update(row.key, { birthMonth: e.target.value })}
                   aria-label="Birth month"
                   required
-                  className="w-28 rounded-lg border border-edge bg-surface px-2 py-2 text-sm text-text"
+                  className="min-w-0 flex-[3] rounded-lg border border-edge bg-surface px-2 py-2 text-sm text-text sm:w-28 sm:flex-none"
                 >
                   <option value="">Month</option>
                   {MONTHS.map((m, i) => (
@@ -148,7 +155,7 @@ export function AttendeeEditor({
                   onChange={(e) => update(row.key, { birthYear: e.target.value })}
                   aria-label="Birth year"
                   required
-                  className="w-24 rounded-lg border border-edge bg-surface px-2 py-2 text-sm text-text"
+                  className="min-w-0 flex-[2] rounded-lg border border-edge bg-surface px-2 py-2 text-sm text-text sm:w-24 sm:flex-none"
                 >
                   <option value="">Year</option>
                   {years.map((y) => (
@@ -159,25 +166,26 @@ export function AttendeeEditor({
                 </select>
               </div>
 
-              <span className="w-9 text-center text-sm text-muted" aria-live="polite">
+              <span className="w-9 shrink-0 text-center text-sm text-muted" aria-live="polite">
                 {age != null ? `${approximate ? '~' : ''}${age}` : ''}
               </span>
 
               <Button
                 type="button"
                 variant="ghost"
-                className="w-9 px-0"
+                className="w-9 shrink-0 px-0"
                 onClick={() => setRows((rs) => rs.filter((r) => r.key !== row.key))}
                 aria-label={`Remove ${row.name || 'person'}`}
               >
                 ×
               </Button>
+              </div>
             </div>
 
             {/* Addresses belong to the person, so the group knows whose is
                 whose — and anyone listed here can sign in and follow the trip,
                 whether or not they are travelling. */}
-            <div className="flex items-center gap-2 pl-2">
+            <div className="flex flex-wrap items-center gap-2 pl-2">
               <span className="text-xs text-muted">Email</span>
               <div className="flex-1">
                 <Input
