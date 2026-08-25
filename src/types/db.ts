@@ -1048,6 +1048,42 @@ export type Database = {
           },
         ]
       }
+      phase_lock_notices: {
+        Row: {
+          family_id: string
+          phase: Database["public"]["Enums"]["trip_phase"]
+          sent_at: string
+          trip_id: string
+        }
+        Insert: {
+          family_id: string
+          phase: Database["public"]["Enums"]["trip_phase"]
+          sent_at?: string
+          trip_id: string
+        }
+        Update: {
+          family_id?: string
+          phase?: Database["public"]["Enums"]["trip_phase"]
+          sent_at?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phase_lock_notices_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phase_lock_notices_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phase_signoffs: {
         Row: {
           family_id: string
@@ -1187,6 +1223,13 @@ export type Database = {
         Returns: Database["public"]["Enums"]["trip_phase"]
       }
       claim_household: { Args: { p_household_id: string }; Returns: undefined }
+      claim_lock_announcement: {
+        Args: {
+          p_phase: Database["public"]["Enums"]["trip_phase"]
+          p_trip_id: string
+        }
+        Returns: boolean
+      }
       claimable_households: {
         Args: never
         Returns: {

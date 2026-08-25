@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { sendReminderEmail } from '@/lib/email/reminders';
+import { sendLockNoticeEmail, sendReminderEmail } from '@/lib/email/reminders';
 import { PHASE_META, phaseHref, type TripPhase } from '@/lib/phases';
 import { listFamilies } from '@/lib/format';
 
@@ -38,7 +38,86 @@ export async function lockPhase(tripId: string, phase: TripPhase) {
   );
   if (error) throw new Error(error.message);
 
+  await announceLock(tripId, phase, familyId);
+
   revalidatePath(`/trips/${tripId}`, 'layout');
+}
+
+/**
+ * Tells the families who haven't finished that another one has.
+ *
+ * This is the quiet failure the app was built around: a trip stalls because
+ * nobody knows it is stalling. One family finishing is the moment the others
+ * can act on, so it is the moment worth an email — and it carries more weight
+ * than a reminder, because nobody is being asked, the group is simply moving.
+ *
+ * Never allowed to break the lock itself. A mail outage must not stop someone
+ * finishing a step.
+ */
+async function announceLock(tripId: string, phase: TripPhase, lockedBy: string) {
+  try {
+    const supabase = await createClient();
+
+    // Once per family per step per six hours, claimed atomically. Re-locking is
+    // ordinary — a withdrawn proposal resets a stale lock, and the UI invites
+    // people to change their mind — but it is not news, and announcing it every
+    // time is how a helpful nudge becomes a reason to mute the sender.
+    const { data: mayAnnounce, error: claimError } = await supabase.rpc(
+      'claim_lock_announcement',
+      { p_trip_id: tripId, p_phase: phase },
+    );
+    if (claimError) {
+      console.error('[lock-notice] could not claim the announcement', claimError.message);
+      return;
+    }
+    if (!mayAnnounce) return;
+
+    const [{ data: trip }, { data: families }, { data: signoffs }] = await Promise.all([
+      supabase.from('trips').select('name').eq('id', tripId).maybeSingle(),
+      supabase.from('families').select('id, name, status').eq('trip_id', tripId),
+      supabase.from('phase_signoffs').select('family_id').eq('trip_id', tripId).eq('phase', phase),
+    ]);
+    if (!trip) return;
+
+    // Only families who can actually act: accepted, still in, not yet finished.
+    const active = (families ?? []).filter((f) => f.status === 'active');
+    const lockedIds = new Set((signoffs ?? []).map((s) => s.family_id));
+    const outstanding = active.filter((f) => !lockedIds.has(f.id) && f.id !== lockedBy);
+    if (outstanding.length === 0) return;
+
+    const lockedFamily = active.find((f) => f.id === lockedBy)?.name ?? 'A family';
+    const remaining = outstanding.map((f) => f.name);
+
+    const { data: members } = await supabase
+      .from('family_members')
+      .select('family_id, email')
+      .in('family_id', outstanding.map((f) => f.id));
+
+    // One email per family, not per address: spouses share a decision, and two
+    // copies of the same nudge reads as a broken app.
+    await Promise.all(
+      outstanding.map((family) => {
+        const to = (members ?? [])
+          .filter((m) => m.family_id === family.id)
+          .map((m) => m.email)
+          .filter(Boolean);
+        if (to.length === 0) return null;
+
+        return sendLockNoticeEmail({
+          to,
+          tripName: trip.name,
+          phaseLabel: PHASE_META[phase].label,
+          phaseUrl: phaseHref(tripId, phase),
+          lockedFamily,
+          lockedCount: lockedIds.size,
+          totalCount: active.length,
+          remaining,
+        });
+      }),
+    );
+  } catch (err) {
+    console.error('[lock-notice] could not announce the lock', err);
+  }
 }
 
 export async function unlockPhase(tripId: string, phase: TripPhase) {

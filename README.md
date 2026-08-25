@@ -208,7 +208,8 @@ The app lives at the repo root, so Vercel needs no root-directory override.
 
 ## Known gaps
 
-- No notification emails beyond invites and reminders — nobody is nudged automatically when a phase opens.
+- No notification emails beyond invites, reminders, and the automatic notice when a family locks a step
+  — nobody is nudged when a phase *opens*, only when someone else finishes it.
 - The organizer is a single point of failure; there is no way to hand the role over.
 - Trip dates are not checked against anything real (no flight or availability awareness).
 - Nothing advances on its own. Even with every family locked in, the organizer presses the button.
