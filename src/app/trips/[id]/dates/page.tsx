@@ -114,8 +114,8 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
           done
             ? 'Locked in.'
             : items.length === 0
-              ? 'Post the weeks that work for your family. Everyone else does the same.'
-              : 'Mark the week you actually want as preferred. Only suggest another if none of these are it.'
+              ? 'Suggest a week that works for your family — it counts as the one you prefer. Everyone else says whether it works for them.'
+              : "First say what you think of each week below. If none of them is what you'd pick, you'll then be able to suggest your own."
         }
       />
 
@@ -177,14 +177,14 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
       {!done && ctx.myFamily?.status === 'active' && !iPreferSomething && unreviewed.length > 0 ? (
         <Card className="space-y-1 bg-surface-2">
           <p className="font-medium text-text">
-            Say what you think of {pluralize(unreviewed.length, 'suggestion')} first
+            Answer {pluralize(unreviewed.length, 'suggestion')} first
           </p>
           <p className="text-sm text-muted">
             {listFamilies(unreviewed.map((b) => b.item.familyName))} put{' '}
             {unreviewed.length === 1 ? 'a week' : 'weeks'} forward. Mark{' '}
             {unreviewed.length === 1 ? 'it' : 'each one'} above.{' '}
-            {unreviewed.length === 1 ? "If it isn't" : "If none of them is"} what you&apos;d pick,
-            you can suggest your own.
+            {unreviewed.length === 1 ? "If it isn't" : 'If none of them is'} what you&apos;d pick, a
+            form to suggest your own week appears here.
           </p>
         </Card>
       ) : null}

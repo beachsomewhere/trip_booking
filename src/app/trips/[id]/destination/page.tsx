@@ -108,7 +108,9 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
         subtitle={
           done
             ? 'Settled.'
-            : 'Mark the one you actually want as preferred. Only suggest another if none of these are it.'
+            : base.length === 0
+              ? 'Suggest somewhere that suits your family — it counts as the place you prefer. Everyone else says whether it works for them.'
+              : "First say what you think of each place below. If none of them is what you'd pick, you'll then be able to suggest somewhere else."
         }
       />
 
@@ -166,14 +168,14 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
       {!done && ctx.myFamily?.status === 'active' && !iPreferSomething && unreviewed.length > 0 ? (
         <Card className="space-y-1 bg-surface-2">
           <p className="font-medium text-text">
-            Say what you think of what&apos;s already here first
+            Answer what&apos;s already here first
           </p>
           <p className="text-sm text-muted">
             {listFamilies(unreviewed.map((b) => b.item.familyName))} put{' '}
             {unreviewed.length === 1 ? 'a place' : 'places'} forward. Mark{' '}
             {unreviewed.length === 1 ? 'it' : 'each one'} above.{' '}
-            {unreviewed.length === 1 ? "If it isn't" : "If none of them is"} what you&apos;d pick,
-            you can suggest somewhere else.
+            {unreviewed.length === 1 ? "If it isn't" : 'If none of them is'} what you&apos;d pick, a
+            search to suggest somewhere else appears here.
           </p>
         </Card>
       ) : null}
