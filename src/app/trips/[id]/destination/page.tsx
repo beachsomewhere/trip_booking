@@ -49,9 +49,12 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
     ? activeNames.filter((n) => !closest.item.yesFamilyNames.includes(n))
     : [];
 
-  const iPreferSomething = allVotes.some(
-    (v) => v.family_id === ctx.myFamily?.id && v.choice === 'yes',
-  );
+  // Only votes on options still on the table. Reading every vote ever cast
+  // counted a "preferred" left behind on a proposal that has since been
+  // withdrawn, which permanently hid the suggest form from that family — with
+  // nothing on the table and no way to put anything there. Suggesting now
+  // records a preference automatically, so every withdrawal strands one.
+  const iPreferSomething = base.some((b) => b.item.myVote === 'yes');
 
   // Everything already on the table that this family has not answered yet —
   // other families' suggestions only; your own do not need reviewing.
