@@ -44,6 +44,47 @@ function revalidateTrip(tripId: string) {
   revalidatePath(`/trips/${tripId}`, 'layout');
 }
 
+/**
+ * Records that a family prefers what they just put forward.
+ *
+ * Proposing something and then showing as not having voted on it is nonsense
+ * on its face, and it stalls the step: moving on needs every family to have
+ * marked something preferred, so the family who cared enough to suggest was
+ * the one holding it up.
+ *
+ * This is only safe because suggesting is gated on having already rejected
+ * everything else. Without that gate it would manufacture the deadlock it is
+ * meant to avoid — four options, each preferred by exactly the one family who
+ * proposed it, and unanimity out of reach. With it, a new option only appears
+ * when its author has genuinely ruled the others out.
+ *
+ * A family may prefer several options at once; that is what makes agreement
+ * possible as the list grows.
+ */
+async function preferOwnProposal(kind: ProposalKind, tripId: string, proposalId: string) {
+  const user = await getUser();
+  if (!user) return;
+  const familyId = await requireMyFamily(tripId);
+  const supabase = await createClient();
+
+  const { error } = await (supabase.from(TABLES[kind].votes) as ReturnType<typeof supabase.from>)
+    .upsert(
+      {
+        proposal_id: proposalId,
+        trip_id: tripId,
+        family_id: familyId,
+        user_id: user.id,
+        choice: 'yes',
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'proposal_id,family_id' },
+    );
+
+  // Never fatal: the suggestion itself is saved, and the family can mark it by
+  // hand. Losing the proposal because a vote failed would be far worse.
+  if (error) console.error('[propose] could not mark own proposal preferred', error.message);
+}
+
 export async function castVote(
   kind: ProposalKind,
   tripId: string,
@@ -173,18 +214,24 @@ export async function proposeDates(
   const familyId = await requireMyFamily(tripId);
   const supabase = await createClient();
 
-  const { error } = await supabase.from('date_proposals').insert({
-    trip_id: tripId,
-    family_id: familyId,
-    created_by_user_id: user.id,
-    start_date: parsed.data.start,
-    end_date: parsed.data.end,
-    note: parsed.data.note || null,
-  });
+  const { data: created, error } = await supabase
+    .from('date_proposals')
+    .insert({
+      trip_id: tripId,
+      family_id: familyId,
+      created_by_user_id: user.id,
+      start_date: parsed.data.start,
+      end_date: parsed.data.end,
+      note: parsed.data.note || null,
+    })
+    .select('id')
+    .single();
   if (error) return { error: error.message };
 
+  await preferOwnProposal('dates', tripId, created.id);
+
   revalidateTrip(tripId);
-  return { ok: 'Added. The other families will see it as your suggestion.' };
+  return { ok: 'Added, and marked as the week you prefer.' };
 }
 
 const placeSchema = z.object({
@@ -210,22 +257,28 @@ export async function proposeDestination(
   const familyId = await requireMyFamily(tripId);
   const supabase = await createClient();
 
-  const { error } = await supabase.from('destination_proposals').insert({
-    trip_id: tripId,
-    family_id: familyId,
-    created_by_user_id: user.id,
-    google_place_id: parsed.data.placeId || null,
-    name: parsed.data.name,
-    formatted_address: parsed.data.address || null,
-    lat: parsed.data.lat ?? null,
-    lng: parsed.data.lng ?? null,
-    photo_url: parsed.data.photoUrl || null,
-    note: parsed.data.note || null,
-  });
+  const { data: created, error } = await supabase
+    .from('destination_proposals')
+    .insert({
+      trip_id: tripId,
+      family_id: familyId,
+      created_by_user_id: user.id,
+      google_place_id: parsed.data.placeId || null,
+      name: parsed.data.name,
+      formatted_address: parsed.data.address || null,
+      lat: parsed.data.lat ?? null,
+      lng: parsed.data.lng ?? null,
+      photo_url: parsed.data.photoUrl || null,
+      note: parsed.data.note || null,
+    })
+    .select('id')
+    .single();
   if (error) return { error: error.message };
 
+  await preferOwnProposal('destination', tripId, created.id);
+
   revalidateTrip(tripId);
-  return { ok: 'Added to the list.' };
+  return { ok: 'Added, and marked as the place you prefer.' };
 }
 
 /** "We're done here" — drives the progress bar without forcing a vote. */
