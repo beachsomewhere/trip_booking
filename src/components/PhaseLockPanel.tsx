@@ -86,7 +86,13 @@ export function PhaseLockPanel({
           {locked.length} of {voting.length} {voting.length === 1 ? 'family has' : 'families have'}{' '}
           locked this in
         </p>
-        {everyoneIn ? (
+        {/* Blocked wins over everything. Every family can have locked in and the
+            step still not be settled — somebody changing their vote after
+            locking is ordinary — and "Ready to move on" directly above "no
+            dates work for everyone yet" is the panel arguing with itself. */}
+        {blockedReason ? (
+          <Badge tone="warn">Not settled yet</Badge>
+        ) : everyoneIn ? (
           <Badge tone="good">Ready to move on</Badge>
         ) : mine && !mine.locked ? (
           <Badge tone="accent">Your turn</Badge>
