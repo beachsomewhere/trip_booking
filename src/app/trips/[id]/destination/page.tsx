@@ -56,6 +56,15 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
   // records a preference automatically, so every withdrawal strands one.
   const iPreferSomething = base.some((b) => b.item.myVote === 'yes');
 
+  // My own live suggestion, and whether the group is actually behind it. A
+  // family whose suggestion has drawn a "less preferred" or a "doesn't work"
+  // is stuck otherwise: their own option is their first choice, which is what
+  // hides the form, so the one person with a reason to offer an alternative is
+  // the one who cannot.
+  const mine = base.find((b) => b.item.isMine);
+  const mineChallenged = Boolean(mine && (mine.item.maybe > 0 || mine.item.no > 0));
+
+
   // Everything already on the table that this family has not answered yet —
   // other families' suggestions only; your own do not need reviewing.
   //
@@ -112,8 +121,8 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
           done
             ? 'Settled.'
             : base.length === 0
-              ? 'Suggest somewhere that suits your family — it counts as the place you prefer. Everyone else says whether it works for them.'
-              : "First say what you think of each place below. If none of them is what you'd pick, you'll then be able to suggest somewhere else."
+              ? 'Suggest the place you’d most want — one per family, and it counts as the one you prefer. Everyone else says whether it works for them.'
+              : "Say what you think of each place below first. Only if none of them is what you'd pick can you put up your own — one per family, so make it the place you'd most want."
         }
       />
 
@@ -168,7 +177,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
       {/* Read the room before adding to it — the search appears only once this
           family has answered every place already on the table and none of them
           is their first choice. */}
-      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething && unreviewed.length > 0 ? (
+      {!done && ctx.myFamily?.status === 'active' && (!iPreferSomething || mineChallenged) && unreviewed.length > 0 ? (
         <Card className="space-y-1 bg-surface-2">
           <p className="font-medium text-text">
             Answer what&apos;s already here first
@@ -185,15 +194,25 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
 
       {!done &&
       ctx.myFamily?.status === 'active' &&
-      !iPreferSomething &&
+      (!iPreferSomething || mineChallenged) &&
       unreviewed.length === 0 ? (
         <Card className="space-y-3">
-          {base.length > 0 ? (
-            <p className="text-sm text-muted">
-              None of these are what you&apos;d pick — suggest another, or mark one above as
-              “Works, preferred”.
+          <div>
+            <p className="font-medium text-text">
+              {mineChallenged
+                ? 'Not everyone is sold on yours — suggest somewhere else'
+                : base.length === 0
+                  ? 'Suggest a place'
+                  : "None of these are what you'd pick — suggest another"}
             </p>
-          ) : null}
+            <p className="text-sm text-muted">
+              {mineChallenged
+                ? `This replaces ${mine!.proposal.name}, so put up the next place you'd most want.`
+                : base.length === 0
+                  ? "Go first — it's much easier for everyone else to react than to start. One suggestion per family, so lead with the place you'd most want."
+                  : 'One suggestion per family, so pick the place you’d most want. Or mark one above as “Works, preferred” instead.'}
+            </p>
+          </div>
           <ProposePlaceForm tripId={id} />
         </Card>
       ) : null}

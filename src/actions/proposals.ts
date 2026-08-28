@@ -61,6 +61,30 @@ function revalidateTrip(tripId: string) {
  * A family may prefer several options at once; that is what makes agreement
  * possible as the list grows.
  */
+async function replacePreviousProposals(
+  kind: ProposalKind,
+  tripId: string,
+  familyId: string,
+  keepId: string,
+) {
+  const supabase = await createClient();
+
+  // One live suggestion per family. Somebody offering an alternative because
+  // theirs was rejected is swapping, not adding — leaving both up would grow
+  // the list with an option they have already stopped arguing for, and every
+  // extra option makes agreement harder to reach.
+  const { error } = await (
+    supabase.from(TABLES[kind].proposals) as ReturnType<typeof supabase.from>
+  )
+    .update({ withdrawn_at: new Date().toISOString() })
+    .eq('trip_id', tripId)
+    .eq('family_id', familyId)
+    .neq('id', keepId)
+    .is('withdrawn_at', null);
+
+  if (error) console.error('[propose] could not withdraw the previous suggestion', error.message);
+}
+
 async function preferOwnProposal(kind: ProposalKind, tripId: string, proposalId: string) {
   const user = await getUser();
   if (!user) return;
@@ -228,6 +252,7 @@ export async function proposeDates(
     .single();
   if (error) return { error: error.message };
 
+  await replacePreviousProposals('dates', tripId, familyId, created.id);
   await preferOwnProposal('dates', tripId, created.id);
 
   revalidateTrip(tripId);
@@ -275,6 +300,7 @@ export async function proposeDestination(
     .single();
   if (error) return { error: error.message };
 
+  await replacePreviousProposals('destination', tripId, familyId, created.id);
   await preferOwnProposal('destination', tripId, created.id);
 
   revalidateTrip(tripId);

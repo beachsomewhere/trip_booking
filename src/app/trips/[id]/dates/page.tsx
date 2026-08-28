@@ -96,6 +96,15 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
   // records a preference automatically, so every withdrawal strands one.
   const iPreferSomething = base.some((b) => b.item.myVote === 'yes');
 
+  // My own live suggestion, and whether the group is actually behind it. A
+  // family whose suggestion has drawn a "less preferred" or a "doesn't work"
+  // is stuck otherwise: their own option is their first choice, which is what
+  // hides the form, so the one person with a reason to offer an alternative is
+  // the one who cannot.
+  const mine = base.find((b) => b.item.isMine);
+  const mineChallenged = Boolean(mine && (mine.item.maybe > 0 || mine.item.no > 0));
+
+
   // Everything already on the table that this family has not answered yet —
   // other families' suggestions only; your own do not need reviewing.
   //
@@ -116,8 +125,8 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
           done
             ? 'Locked in.'
             : items.length === 0
-              ? 'Suggest a week that works for your family — it counts as the one you prefer. Everyone else says whether it works for them.'
-              : "First say what you think of each week below. If none of them is what you'd pick, you'll then be able to suggest your own."
+              ? 'Suggest the week you’d most want — one per family, and it counts as the one you prefer. Everyone else says whether it works for them.'
+              : "Say what you think of each week below first. Only if none of them is what you'd pick can you put up your own — one per family, so make it the week you'd most want."
         }
       />
 
@@ -176,7 +185,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
           family has answered every week already on the table and none of them
           is their first choice — the two states in which a new suggestion is
           the useful thing to do rather than another option to converge on. */}
-      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething && unreviewed.length > 0 ? (
+      {!done && ctx.myFamily?.status === 'active' && (!iPreferSomething || mineChallenged) && unreviewed.length > 0 ? (
         <Card className="space-y-1 bg-surface-2">
           <p className="font-medium text-text">
             Answer {pluralize(unreviewed.length, 'suggestion')} first
@@ -193,19 +202,28 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
 
       {!done &&
       ctx.myFamily?.status === 'active' &&
-      !iPreferSomething &&
+      (!iPreferSomething || mineChallenged) &&
       unreviewed.length === 0 ? (
         <Card className="space-y-3">
           <div>
             <p className="font-medium text-text">
-              {base.length === 0
-                ? 'Suggest a week'
-                : "None of these are what you'd pick — suggest another"}
+              {mineChallenged
+                ? 'Not everyone can do your week — suggest a different one'
+                : base.length === 0
+                  ? 'Suggest a week'
+                  : "None of these are what you'd pick — suggest another"}
             </p>
             <p className="text-sm text-muted">
-              {base.length === 0
-                ? "Go first — it's much easier for everyone else to react than to start."
-                : 'Mark a week above as “Works, preferred” instead if one of them suits you.'}
+              {mineChallenged ? (
+                <>
+                  This replaces {formatDateRange(mine!.proposal.start_date, mine!.proposal.end_date)}
+                  , so put up the next week you&apos;d most want.
+                </>
+              ) : base.length === 0 ? (
+                "Go first — it's much easier for everyone else to react than to start. One suggestion per family, so lead with the week you'd most want."
+              ) : (
+                'One suggestion per family, so pick the week you’d most want. Or mark one above as “Works, preferred” instead.'
+              )}
             </p>
           </div>
           <ProposeDatesForm
