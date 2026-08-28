@@ -127,6 +127,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
           rows={locks}
           isOrganizer={ctx.isOrganizer}
           canLock={ctx.myFamily?.status === 'active'}
+          pick={{ what: 'week', label: 'Show me the front-runner', nextLabel: 'Where' }}
           blockedReason={datesBlocked}
         />
       ) : null}
@@ -148,7 +149,7 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
           items={items}
           canVote={canVote}
           isOrganizer={ctx.isOrganizer && !done}
-          resolveLabel="Lock in these dates"
+          resolveLabel="Choose these dates"
         />
       ) : (
         <EmptyState

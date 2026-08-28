@@ -5,7 +5,7 @@ import { lockPhase, remindFamily, unlockPhase } from '@/actions/phases';
 import { advancePhase } from '@/actions/trips';
 import { Badge, Button, Card, cx } from '@/components/ui';
 import { listFamilies, pluralize } from '@/lib/format';
-import { LOCK_PANEL_ID } from '@/lib/revealLock';
+import { FRONT_RUNNER_ID, LOCK_PANEL_ID, revealPanel } from '@/lib/revealLock';
 import type { TripPhase } from '@/lib/phases';
 
 export interface LockRow {
@@ -39,6 +39,7 @@ export function PhaseLockPanel({
   advanceLabel,
   canLock = true,
   blockedReason = null,
+  pick,
 }: {
   tripId: string;
   phase: TripPhase;
@@ -54,6 +55,14 @@ export function PhaseLockPanel({
    * accepts afterwards lands in a trip they can never add to.
    */
   blockedReason?: string | null;
+  /**
+   * For the steps that end by choosing a winning proposal rather than by
+   * pressing continue. Everyone locking in is not the last act on those, and
+   * the panel used to say "Ready to move on" beside no control at all — the
+   * real one being a button further down a card, on a step where "lock in"
+   * already meant something else.
+   */
+  pick?: { what: string; label: string; nextLabel: string };
 }) {
   const [pending, start] = useTransition();
   const [reminded, setReminded] = useState<string[]>([]);
@@ -200,6 +209,29 @@ export function PhaseLockPanel({
                   : "Tells everyone you're done with this step."}
               </span>
             </>
+          )}
+        </div>
+      ) : null}
+
+      {/* Steps that end by picking a winner. The control lives on the option
+          itself, so say that and take them to it. */}
+      {pick && everyoneIn && !nextPhase && !blockedReason ? (
+        <div className="space-y-2 border-t border-edge pt-3">
+          {isOrganizer ? (
+            <>
+              <p className="text-sm text-text">
+                Everyone&apos;s in. Choose the {pick.what} the group is going with — that closes
+                this step and opens {pick.nextLabel}.
+              </p>
+              <Button variant="secondary" onClick={() => revealPanel(FRONT_RUNNER_ID)}>
+                {pick.label}
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-muted">
+              Everyone&apos;s in. Whoever started the trip picks the {pick.what} the group is going
+              with, and {pick.nextLabel} opens.
+            </p>
           )}
         </div>
       ) : null}

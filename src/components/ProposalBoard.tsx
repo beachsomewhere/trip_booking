@@ -11,6 +11,7 @@ import {
 import { Badge, Button, Card, Input, cx } from '@/components/ui';
 import { listFamilies } from '@/lib/format';
 import type { VoteChoice } from '@/lib/consensus';
+import { FRONT_RUNNER_ID } from '@/lib/revealLock';
 
 export interface BoardItem {
   id: string;
@@ -113,7 +114,10 @@ function ProposalCard({
     });
 
   return (
-    <Card className={cx('space-y-3', item.isLeader && 'border-accent')}>
+    <Card
+      id={item.isLeader ? FRONT_RUNNER_ID : undefined}
+      className={cx('scroll-mt-6 space-y-3', item.isLeader && 'border-accent')}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="text-sm text-muted">
           {item.isMine ? 'You suggested' : `${item.familyName} suggested`}

@@ -127,6 +127,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
           rows={locks}
           isOrganizer={ctx.isOrganizer}
           canLock={ctx.myFamily?.status === 'active'}
+          pick={{ what: 'place', label: 'Show me the front-runner', nextLabel: 'Where to stay' }}
           blockedReason={destinationBlocked}
         />
       ) : null}
@@ -138,7 +139,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
           items={items}
           canVote={canVote}
           isOrganizer={ctx.isOrganizer && !done}
-          resolveLabel="Lock in this destination"
+          resolveLabel="Choose this destination"
         />
       ) : (
         <EmptyState

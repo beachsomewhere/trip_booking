@@ -11,11 +11,17 @@
  * runtime would be compiled away.
  */
 export const LOCK_PANEL_ID = 'lock-in';
+/** The option currently winning — what the organizer has to choose between. */
+export const FRONT_RUNNER_ID = 'front-runner';
 
 export function revealLockPanel() {
+  revealPanel(LOCK_PANEL_ID);
+}
+
+export function revealPanel(id: string) {
   if (typeof document === 'undefined') return;
 
-  const el = document.getElementById(LOCK_PANEL_ID);
+  const el = document.getElementById(id);
   if (!el) return;
 
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
