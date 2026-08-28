@@ -107,10 +107,38 @@ function ProposalCard({
 }) {
   const [pending, start] = useTransition();
   const [note, setNote] = useState(item.myNote);
+  /** A negative vote being composed. Not recorded until it has a reason. */
+  const [draft, setDraft] = useState<VoteChoice | null>(null);
 
-  const vote = (choice: VoteChoice) =>
-    start(() => {
-      void castVote(kind, tripId, item.id, choice);
+  const showing = draft ?? item.myVote;
+  const needsReason = showing != null && showing !== 'yes';
+  const reasonMissing = needsReason && note.trim().length === 0;
+
+  /**
+   * "Works, preferred" records instantly — no friction on the answer the app
+   * most wants. Anything else opens a reason first and records nothing until
+   * there is one: a bare "doesn't work" tells the group a problem exists and
+   * nothing about how to avoid it, so the next suggestion is another guess.
+   */
+  const choose = (choice: VoteChoice) => {
+    if (choice === 'yes') {
+      setDraft(null);
+      start(() => {
+        void castVote(kind, tripId, item.id, choice);
+      });
+      return;
+    }
+    setDraft(choice);
+  };
+
+  const commit = () =>
+    start(async () => {
+      if (draft) {
+        await castVote(kind, tripId, item.id, draft, note);
+        setDraft(null);
+      } else {
+        await saveVoteNote(kind, tripId, item.id, note);
+      }
     });
 
   return (
@@ -160,9 +188,9 @@ function ProposalCard({
           {CHOICES.map((c) => (
             <Button
               key={c.value}
-              variant={item.myVote === c.value ? 'primary' : 'secondary'}
+              variant={showing === c.value ? 'primary' : 'secondary'}
               disabled={pending}
-              onClick={() => vote(c.value)}
+              onClick={() => choose(c.value)}
               title={c.hint}
             >
               {c.label}
@@ -171,36 +199,54 @@ function ProposalCard({
         </div>
       ) : null}
 
-      {/* Explaining a vote is optional and comes after it. "Less preferred"
-          tells the group there is a problem but not what it is, and the asking
-          then happens somewhere this app cannot see. */}
-      {canVote && item.myVote ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-48 flex-1">
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={
-                item.myVote === 'yes'
-                  ? 'Why this one? (optional)'
-                  : 'Why not? — helps the group work around it'
-              }
-              maxLength={280}
-              aria-label="Reason for your vote"
-            />
+      {/* Required on anything but "preferred". A family reading this later has
+          to be able to tell what to avoid; "less preferred" on its own sends
+          the asking somewhere this app cannot see. */}
+      {canVote && showing ? (
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-48 flex-1">
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                autoFocus={draft != null}
+                required={needsReason}
+                placeholder={
+                  showing === 'yes'
+                    ? 'Why this one? (optional)'
+                    : kind === 'dates'
+                      ? 'Why not? — school, work, already booked…'
+                      : 'Why not? — been there, no passes, too far…'
+                }
+                maxLength={280}
+                aria-label="Reason for your vote"
+              />
+            </div>
+            {draft || note !== item.myNote ? (
+              <Button variant="secondary" disabled={pending || reasonMissing} onClick={commit}>
+                {draft ? 'Save my answer' : 'Save'}
+              </Button>
+            ) : null}
+            {draft ? (
+              <Button
+                variant="ghost"
+                disabled={pending}
+                onClick={() => {
+                  setDraft(null);
+                  setNote(item.myNote);
+                }}
+              >
+                Cancel
+              </Button>
+            ) : null}
           </div>
-          {note !== item.myNote ? (
-            <Button
-              variant="secondary"
-              disabled={pending}
-              onClick={() =>
-                start(() => {
-                  void saveVoteNote(kind, tripId, item.id, note);
-                })
-              }
-            >
-              Save
-            </Button>
+
+          {reasonMissing ? (
+            <p className="text-sm text-clay-600">
+              {draft
+                ? 'A reason is needed before this counts — one line is plenty.'
+                : "You marked this without saying why. Add a line so the group can work around it."}
+            </p>
           ) : null}
         </div>
       ) : null}

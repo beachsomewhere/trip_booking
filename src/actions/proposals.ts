@@ -114,6 +114,13 @@ export async function castVote(
   tripId: string,
   proposalId: string,
   choice: VoteChoice,
+  /**
+   * Sent with the vote, not after it, when the vote is a negative one. "Doesn't
+   * work" with no reason tells the group there is a problem and nothing about
+   * how to avoid it in the next suggestion — which is the entire point of
+   * saying it.
+   */
+  note?: string,
 ) {
   const user = await getUser();
   if (!user) throw new Error('Not signed in.');
@@ -131,6 +138,7 @@ export async function castVote(
         family_id: familyId,
         user_id: user.id,
         choice,
+        note: note === undefined ? undefined : note.trim().slice(0, 280) || null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'proposal_id,family_id' },
