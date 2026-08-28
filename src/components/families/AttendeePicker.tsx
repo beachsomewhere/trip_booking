@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { setTripAttendees } from '@/actions/families';
 import type { ActionState } from '@/actions/auth';
 import { Button, EmptyState, FormError, cx } from '@/components/ui';
 import { ageOn } from '@/lib/age';
+import { revealLockPanel } from '@/lib/revealLock';
 
 export interface PickablePerson {
   personId: string;
@@ -59,6 +60,13 @@ export function AttendeePicker({
     setTripAttendees.bind(null, tripId, familyId),
     {},
   );
+
+  // Saved is not finished. Point at the lock, which is the step that actually
+  // unblocks the group and the one people were walking away without doing.
+  // `state` is a fresh object per submission, so this fires once each time.
+  useEffect(() => {
+    if (state.ok) revealLockPanel();
+  }, [state]);
 
   if (people.length === 0) {
     return (

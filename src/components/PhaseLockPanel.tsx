@@ -5,6 +5,7 @@ import { lockPhase, remindFamily, unlockPhase } from '@/actions/phases';
 import { advancePhase } from '@/actions/trips';
 import { Badge, Button, Card, cx } from '@/components/ui';
 import { listFamilies, pluralize } from '@/lib/format';
+import { LOCK_PANEL_ID } from '@/lib/revealLock';
 import type { TripPhase } from '@/lib/phases';
 
 export interface LockRow {
@@ -68,7 +69,9 @@ export function PhaseLockPanel({
   const othersOutstanding = outstanding.filter((r) => !r.isMine);
 
   return (
-    <Card className="space-y-4">
+    // Scrolled to from the attendee picker once someone says who is coming —
+    // that is the moment the lock becomes the outstanding task.
+    <Card id={LOCK_PANEL_ID} className="scroll-mt-6 space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-medium text-text">
           {locked.length} of {voting.length} {voting.length === 1 ? 'family has' : 'families have'}{' '}
