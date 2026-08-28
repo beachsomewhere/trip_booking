@@ -53,6 +53,18 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
     (v) => v.family_id === ctx.myFamily?.id && v.choice === 'yes',
   );
 
+  // Everything already on the table that this family has not answered yet —
+  // other families' suggestions only; your own do not need reviewing.
+  //
+  // Suggesting is gated behind reading. Without this, the first thing a family
+  // does is add their own, and a list of four options each preferred by exactly
+  // one family is a list that can never reach unanimity. Reacting is cheap and
+  // it converges; proposing is neither.
+  const unreviewed = base.filter(
+    (b) => b.proposal.family_id !== ctx.myFamily?.id && b.item.myVote == null,
+  );
+
+
   const destinationBlocked =
     base.length === 0
       ? 'Nobody has suggested a destination yet.'
@@ -148,9 +160,28 @@ export default async function DestinationPage({ params }: { params: Promise<{ id
         />
       )}
 
-      {/* Only offer the search when nothing on the table is already your first
-          choice — every extra option makes unanimity harder to reach. */}
-      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething ? (
+      {/* Read the room before adding to it — the search appears only once this
+          family has answered every place already on the table and none of them
+          is their first choice. */}
+      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething && unreviewed.length > 0 ? (
+        <Card className="space-y-1 bg-surface-2">
+          <p className="font-medium text-text">
+            Say what you think of what&apos;s already here first
+          </p>
+          <p className="text-sm text-muted">
+            {listFamilies(unreviewed.map((b) => b.item.familyName))} put{' '}
+            {unreviewed.length === 1 ? 'a place' : 'places'} forward. Mark{' '}
+            {unreviewed.length === 1 ? 'it' : 'each one'} above.{' '}
+            {unreviewed.length === 1 ? "If it isn't" : "If none of them is"} what you&apos;d pick,
+            you can suggest somewhere else.
+          </p>
+        </Card>
+      ) : null}
+
+      {!done &&
+      ctx.myFamily?.status === 'active' &&
+      !iPreferSomething &&
+      unreviewed.length === 0 ? (
         <Card className="space-y-3">
           {base.length > 0 ? (
             <p className="text-sm text-muted">

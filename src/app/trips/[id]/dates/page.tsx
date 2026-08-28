@@ -94,6 +94,18 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
     (v) => v.family_id === ctx.myFamily?.id && v.choice === 'yes',
   );
 
+  // Everything already on the table that this family has not answered yet —
+  // other families' suggestions only; your own do not need reviewing.
+  //
+  // Suggesting is gated behind reading. Without this, the first thing a family
+  // does is add their own week, and a list of four options each preferred by
+  // exactly one family is a list that can never reach unanimity. Reacting is
+  // cheap and it converges; proposing is neither.
+  const unreviewed = base.filter(
+    (b) => b.proposal.family_id !== ctx.myFamily?.id && b.item.myVote == null,
+  );
+
+
   return (
     <div className="space-y-6">
       <PageTitle
@@ -158,10 +170,29 @@ export default async function DatesPage({ params }: { params: Promise<{ id: stri
         />
       )}
 
-      {/* Suggest a week only when none of the ones on the table are already your
-          preference. Somebody who has found a week they want does not need a
-          blank form, and every extra option makes unanimity harder to reach. */}
-      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething ? (
+      {/* Read the room before adding to it. The form appears only once this
+          family has answered every week already on the table and none of them
+          is their first choice — the two states in which a new suggestion is
+          the useful thing to do rather than another option to converge on. */}
+      {!done && ctx.myFamily?.status === 'active' && !iPreferSomething && unreviewed.length > 0 ? (
+        <Card className="space-y-1 bg-surface-2">
+          <p className="font-medium text-text">
+            Say what you think of {pluralize(unreviewed.length, 'suggestion')} first
+          </p>
+          <p className="text-sm text-muted">
+            {listFamilies(unreviewed.map((b) => b.item.familyName))} put{' '}
+            {unreviewed.length === 1 ? 'a week' : 'weeks'} forward. Mark{' '}
+            {unreviewed.length === 1 ? 'it' : 'each one'} above.{' '}
+            {unreviewed.length === 1 ? "If it isn't" : "If none of them is"} what you&apos;d pick,
+            you can suggest your own.
+          </p>
+        </Card>
+      ) : null}
+
+      {!done &&
+      ctx.myFamily?.status === 'active' &&
+      !iPreferSomething &&
+      unreviewed.length === 0 ? (
         <Card className="space-y-3">
           <div>
             <p className="font-medium text-text">
