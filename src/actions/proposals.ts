@@ -7,6 +7,7 @@ import { createClient, getUser } from '@/lib/supabase/server';
 import type { ActionState } from '@/actions/auth';
 import type { VoteChoice } from '@/lib/consensus';
 import { phaseHref, type TripPhase } from '@/lib/phases';
+import { announcePhaseOpen } from '@/actions/phases';
 
 /**
  * Shared machinery for the three "a family proposes, the others vote" phases.
@@ -133,6 +134,10 @@ export async function resolveProposal(kind: ProposalKind, tripId: string, propos
     p_proposal_id: proposalId,
   });
   if (error) throw new Error(error.message);
+
+  // Picking a winner is also how a step closes, so it announces the next one
+  // the same way the organizer's "continue" button does.
+  await announcePhaseOpen(tripId, RESOLVES_INTO[kind]);
 
   revalidateTrip(tripId);
   redirect(phaseHref(tripId, RESOLVES_INTO[kind]));

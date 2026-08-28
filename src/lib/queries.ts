@@ -42,7 +42,8 @@ export async function loadTripContext(tripId: string): Promise<TripContext> {
 
   const supabase = await createClient();
 
-  const [{ data: trip }, { data: families }] = await Promise.all([
+  const [{ data: trip, error: tripError }, { data: families, error: familiesError }] =
+    await Promise.all([
     supabase.from('trips').select('*').eq('id', tripId).maybeSingle(),
     supabase
       .from('families')
@@ -50,6 +51,12 @@ export async function loadTripContext(tripId: string): Promise<TripContext> {
       .eq('trip_id', tripId)
       .order('created_at', { ascending: true }),
   ]);
+
+  // A failed query yields no rows, which renders as "this trip has no families"
+  // — indistinguishable from a trip that really has none. That cost an hour
+  // once already (a stale PostgREST schema cache after a migration), so say so.
+  if (tripError) console.error('[trip] query failed', tripError.message);
+  if (familiesError) console.error('[trip families] query failed', familiesError.message);
 
   // RLS returns zero rows rather than an error for a trip you are not in, so a
   // missing trip and a forbidden trip look the same here — which is the point.

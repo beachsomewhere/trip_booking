@@ -2,9 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { sendLockNoticeEmail, sendReminderEmail } from '@/lib/email/reminders';
-import { PHASE_META, phaseHref, type TripPhase } from '@/lib/phases';
-import { listFamilies } from '@/lib/format';
+import {
+  sendLockNoticeEmail,
+  sendPhaseOpenEmail,
+  sendReminderEmail,
+} from '@/lib/email/reminders';
+import { PHASES, PHASE_META, normalizePhase, phaseHref, type TripPhase } from '@/lib/phases';
+import { formatDateRange, listFamilies } from '@/lib/format';
 
 /**
  * Locking in a step.
@@ -106,6 +110,7 @@ async function announceLock(tripId: string, phase: TripPhase, lockedBy: string) 
         return sendLockNoticeEmail({
           to,
           tripName: trip.name,
+          phase,
           phaseLabel: PHASE_META[phase].label,
           phaseUrl: phaseHref(tripId, phase),
           lockedFamily,
@@ -169,6 +174,7 @@ export async function remindFamily(tripId: string, familyId: string, phase: Trip
   const { delivered } = await sendReminderEmail({
     to,
     tripName: trip.name,
+    phase,
     phaseLabel: PHASE_META[phase].label,
     phaseUrl: phaseHref(tripId, phase),
     fromFamily,
@@ -177,4 +183,76 @@ export async function remindFamily(tripId: string, familyId: string, phase: Trip
 
   revalidatePath(`/trips/${tripId}`, 'layout');
   return { delivered };
+}
+
+/**
+ * Tells every family that a step has closed and the next one is open.
+ *
+ * This is the gap the app was built to close. A step finishes, and until
+ * somebody happens to open the trip, nobody knows their turn has come round —
+ * so the trip stalls at exactly the moment it was ready to move.
+ *
+ * Sent to everyone, including the families who already locked the step that
+ * just closed: they are the ones who have been waiting, and "it moved" is the
+ * news they were waiting for. Best-effort, and never allowed to break the
+ * advance itself.
+ */
+export async function announcePhaseOpen(tripId: string, to: TripPhase) {
+  try {
+    const supabase = await createClient();
+
+    const [{ data: trip }, { data: families }] = await Promise.all([
+      supabase
+        .from('trips')
+        .select('name, phase, agreed_start_date, agreed_end_date, destination_name')
+        .eq('id', tripId)
+        .maybeSingle(),
+      supabase.from('families').select('id, name, status').eq('trip_id', tripId),
+    ]);
+    if (!trip) return;
+
+    const active = (families ?? []).filter((f) => f.status === 'active');
+    if (active.length === 0) return;
+
+    const { data: members } = await supabase
+      .from('family_members')
+      .select('family_id, email')
+      .in('family_id', active.map((f) => f.id));
+
+    const previous = PHASES[Math.max(PHASES.indexOf(normalizePhase(to)) - 1, 0)];
+    const finishedLabel = to === previous ? null : PHASE_META[previous].label;
+
+    // What the step that just closed actually decided. "Where is open" is
+    // useful; "the dates are Oct 23–30, and where is open" is the answer they
+    // came back for.
+    const settled =
+      previous === 'dates' && trip.agreed_start_date && trip.agreed_end_date
+        ? `${formatDateRange(trip.agreed_start_date, trip.agreed_end_date)} it is.`
+        : previous === 'destination' && trip.destination_name
+          ? `${trip.destination_name} it is.`
+          : null;
+
+    await Promise.all(
+      active.map((family) => {
+        const emails = (members ?? [])
+          .filter((m) => m.family_id === family.id)
+          .map((m) => m.email)
+          .filter(Boolean);
+        if (emails.length === 0) return null;
+
+        return sendPhaseOpenEmail({
+          to: emails,
+          tripName: trip.name,
+          phase: to,
+          phaseLabel: PHASE_META[to].label,
+          phaseBlurb: PHASE_META[to].blurb,
+          phaseUrl: phaseHref(tripId, to),
+          finishedLabel,
+          settled,
+        });
+      }),
+    );
+  } catch (err) {
+    console.error('[phase-open] could not announce the new step', err);
+  }
 }

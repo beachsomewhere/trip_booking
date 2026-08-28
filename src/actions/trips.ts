@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createClient, getUser } from '@/lib/supabase/server';
 import type { ActionState } from '@/actions/auth';
 import { phaseHref, type TripPhase } from '@/lib/phases';
+import { announcePhaseOpen } from '@/actions/phases';
 
 const createSchema = z.object({
   name: z.string().trim().min(1, 'Give the trip a name.').max(120),
@@ -57,6 +58,9 @@ export async function advancePhase(tripId: string, to: TripPhase) {
   const supabase = await createClient();
   const { error } = await supabase.rpc('advance_phase', { p_trip_id: tripId, p_to: to });
   if (error) throw new Error(error.message);
+
+  // Before the redirect, which throws by design.
+  await announcePhaseOpen(tripId, to);
 
   revalidatePath(`/trips/${tripId}`, 'layout');
   redirect(phaseHref(tripId, to));
