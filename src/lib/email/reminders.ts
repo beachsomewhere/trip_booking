@@ -1,7 +1,8 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { emailFrom, resendApiKey, siteUrl } from '@/lib/env';
-import { renderTracker } from '@/lib/email/tracker';
+import { renderTracker, trackerCaption } from '@/lib/email/tracker';
+import { escapeHtml, preheader, sentStamp } from '@/lib/email/shell';
 import type { TripPhase } from '@/lib/phases';
 
 export interface ReminderEmail {
@@ -15,12 +16,6 @@ export interface ReminderEmail {
   fromFamily: string | null;
   /** Families already locked in, so the nudge carries social weight. */
   waitingSince: string | null;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-  );
 }
 
 /**
@@ -45,11 +40,12 @@ export async function sendReminderEmail(reminder: ReminderEmail): Promise<{ deli
 
   const html = `
 <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1c1a17">
+  ${preheader(`${trackerCaption({ phase: reminder.phase })} ${reminder.tripName}`)}
   <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b6558;margin:0 0 8px">
     Lock the Trip
   </p>
   <h1 style="font-size:22px;margin:0 0 12px">
-    ${asker} ${reminder.fromFamily ? 'is' : 'are'} waiting on you
+    ${asker} ${reminder.fromFamily ? 'are' : 'is'} waiting on you
   </h1>
   ${renderTracker({ phase: reminder.phase })}
   <p style="font-size:15px;line-height:1.55;color:#3d3a33;margin:0 0 20px">
@@ -66,6 +62,7 @@ export async function sendReminderEmail(reminder: ReminderEmail): Promise<{ deli
   <p style="font-size:13px;color:#6b6558;margin:0">
     Or paste this link:<br /><span style="word-break:break-all">${url}</span>
   </p>
+  ${sentStamp()}
 </div>`.trim();
 
   try {
@@ -135,6 +132,7 @@ export async function sendLockNoticeEmail(notice: LockNoticeEmail): Promise<{ de
 
   const html = `
 <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1c1a17">
+  ${preheader(`${notice.lockedCount} of ${notice.totalCount} families in · ${trackerCaption({ phase: notice.phase })}`)}
   <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b6558;margin:0 0 8px">
     Lock the Trip
   </p>
@@ -162,6 +160,7 @@ export async function sendLockNoticeEmail(notice: LockNoticeEmail): Promise<{ de
   <p style="font-size:13px;color:#6b6558;margin:0">
     Or paste this link:<br /><span style="word-break:break-all">${url}</span>
   </p>
+  ${sentStamp()}
 </div>`.trim();
 
   try {
@@ -235,6 +234,7 @@ export async function sendPhaseOpenEmail(open: PhaseOpenEmail): Promise<{ delive
 
   const html = `
 <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1c1a17">
+  ${preheader(`${trackerCaption({ phase: open.phase, currentIsDone: finished })} ${open.settled ?? ''}`)}
   <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b6558;margin:0 0 8px">
     Lock the Trip
   </p>
@@ -256,6 +256,7 @@ export async function sendPhaseOpenEmail(open: PhaseOpenEmail): Promise<{ delive
   <p style="font-size:13px;color:#6b6558;margin:0">
     Or paste this link:<br /><span style="word-break:break-all">${url}</span>
   </p>
+  ${sentStamp()}
 </div>`.trim();
 
   try {

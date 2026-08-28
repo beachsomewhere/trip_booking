@@ -1,6 +1,7 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { emailFrom, resendApiKey, siteUrl } from '@/lib/env';
+import { escapeHtml, preheader, sentStamp } from '@/lib/email/shell';
 
 export interface InviteEmail {
   to: string;
@@ -20,6 +21,7 @@ function renderInvite({ tripName, fromFamily, token, tripDescription }: InviteEm
   const url = inviteUrl(token);
   return `
 <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1c1a17">
+  ${preheader(fromFamily ? `${fromFamily} added your family to ${tripName}` : `You're invited to ${tripName}`)}
   <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b6558;margin:0 0 8px">
     Lock the Trip
   </p>
@@ -48,14 +50,10 @@ function renderInvite({ tripName, fromFamily, token, tripDescription }: InviteEm
   <p style="font-size:13px;color:#6b6558;margin:0">
     Or paste this link: <br /><span style="word-break:break-all">${url}</span>
   </p>
+  ${sentStamp()}
 </div>`.trim();
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-  );
-}
 
 /**
  * Sends an invite, or logs it.

@@ -1,6 +1,7 @@
 import 'server-only';
 import { Resend } from 'resend';
 import { emailFrom, resendApiKey, siteUrl } from '@/lib/env';
+import { escapeHtml, preheader, sentStamp } from '@/lib/email/shell';
 
 /**
  * "The Barnes want to keep you on their list."
@@ -21,17 +22,13 @@ export function friendUrl(token: string): string {
   return `${siteUrl()}/friends/${token}`;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-  );
-}
 
 function render({ fromName, token }: FriendEmail): string {
   const url = friendUrl(token);
   const who = escapeHtml(fromName);
   return `
 <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1c1a17">
+  ${preheader(`${fromName} would like to add your family — this is not a trip invitation`)}
   <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b6558;margin:0 0 8px">
     Lock the Trip
   </p>
@@ -54,6 +51,7 @@ function render({ fromName, token }: FriendEmail): string {
   <p style="font-size:13px;color:#6b6558;margin:0">
     Or paste this link: <br /><span style="word-break:break-all">${url}</span>
   </p>
+  ${sentStamp()}
 </div>`.trim();
 }
 
